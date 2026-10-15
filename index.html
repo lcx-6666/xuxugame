@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>嘘嘘游戏大厅</title>
+<style>
+  :root{
+    --bg:#e9f6fc;
+    --card:#fff;
+    --ink:#2c4a5a;
+    --ink-soft:#5d7d8d;
+    --accent:#36b3e3;
+    --accent-dark:#238ab3;
+    --bubble:rgba(54,179,227,.12);
+    --shadow:0 8px 24px rgba(44,74,90,.12);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{min-height:100%;}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(54,179,227,.18), transparent 40%),
+      radial-gradient(circle at 85% 88%, rgba(120,210,240,.18), transparent 42%),
+      radial-gradient(circle at 70% 10%, rgba(180,230,250,.20), transparent 38%);
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+    color:var(--ink);
+    padding:22px 14px 40px;
+    touch-action:manipulation;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+  .logo{
+    width:58px;height:58px;border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),#7dd5f7);
+    display:flex;align-items:center;justify-content:center;
+    font-size:32px;box-shadow:var(--shadow);flex-shrink:0;
+  }
+  .title h1{font-size:30px;letter-spacing:2px;font-weight:800;}
+  .title p{font-size:13px;color:var(--ink-soft);letter-spacing:1px;margin-top:3px;}
+
+  .section-title{font-size:14px;font-weight:700;color:var(--ink-soft);margin:22px 0 10px;letter-spacing:1px;}
+
+  .game-card{
+    background:var(--card);border-radius:20px;box-shadow:var(--shadow);
+    padding:18px;display:flex;gap:16px;align-items:center;
+    transition:transform .1s ease, box-shadow .1s ease;
+  }
+  .game-card:active{transform:translateY(2px);box-shadow:0 4px 12px rgba(44,74,90,.10);}
+  .game-card .icon{
+    width:64px;height:64px;border-radius:16px;
+    background:linear-gradient(135deg,var(--accent),#7dd5f7);
+    display:flex;align-items:center;justify-content:center;font-size:34px;flex-shrink:0;
+  }
+  .game-card .info{flex:1;}
+  .game-card .info h2{font-size:18px;font-weight:800;margin-bottom:4px;}
+  .game-card .info p{font-size:12px;color:var(--ink-soft);line-height:1.6;}
+  .game-card .go{
+    width:44px;height:44px;border-radius:50%;
+    background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:18px;flex-shrink:0;box-shadow:0 3px 8px rgba(54,179,227,.35);
+  }
+
+  footer{margin-top:34px;text-align:center;font-size:12px;color:var(--ink-soft);line-height:1.8;}
+  footer a{color:var(--accent-dark);text-decoration:none;}
+
+  /* 简单泡泡装饰 */
+  .bubble-dec{position:fixed;border-radius:50%;background:var(--bubble);pointer-events:none;z-index:-1;}
+  .b1{width:120px;height:120px;left:-40px;bottom:10%;}
+  .b2{width:80px;height:80px;right:-20px;top:18%;}
+  .b3{width:50px;height:50px;right:12%;bottom:22%;}
+
+  /* 响应式：平板 / 小电脑 */
+  @media (min-width: 600px) {
+    body{padding:40px 24px 60px;}
+    .wrap{max-width:680px;}
+    header{gap:16px;margin-bottom:32px;}
+    .logo{width:76px;height:76px;font-size:42px;}
+    .title h1{font-size:40px;}
+    .title p{font-size:15px;}
+    .section-title{font-size:16px;margin:30px 0 14px;}
+    .game-card{padding:22px;gap:20px;margin-top:14px;}
+    .game-card .icon{width:78px;height:78px;font-size:40px;border-radius:20px;}
+    .game-card .info h2{font-size:22px;}
+    .game-card .info p{font-size:14px;}
+    .game-card .go{width:54px;height:54px;font-size:22px;}
+    footer{font-size:13px;margin-top:48px;}
+    .b1{width:160px;height:160px;}
+    .b2{width:110px;height:110px;}
+    .b3{width:70px;height:70px;}
+  }
+  /* 响应式：大屏电脑 */
+  @media (min-width: 1024px) {
+    body{padding:60px 40px 80px;}
+    .wrap{max-width:800px;}
+    .title h1{font-size:48px;}
+    .game-card{padding:26px 30px;}
+    .game-card .icon{width:90px;height:90px;font-size:48px;}
+    .game-card .info h2{font-size:26px;}
+    .game-card .info p{font-size:15px;}
+  }
+</style>
+</head>
+<body>
+<div class="bubble-dec b1"></div>
+<div class="bubble-dec b2"></div>
+<div class="bubble-dec b3"></div>
+<div class="wrap">
+  <header>
+    <div class="logo">🫧</div>
+    <div class="title">
+      <h1>嘘嘘游戏</h1>
+      <p>点开就玩 · 奶娃宇宙友情致敬版</p>
+    </div>
+  </header>
+
+  <div class="section-title">🎮 全部游戏</div>
+  <a href="./assets/games/2048/" style="text-decoration:none;color:inherit;display:block;">
+    <div class="game-card">
+      <div class="icon">🧩</div>
+      <div class="info">
+        <h2>嘘嘘 2048</h2>
+        <p>经典 2048 玩法，方块全是嘘嘘精选表情。合成 2048，解锁终极嘘嘘！</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/hecheng/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🌈</div>
+      <div class="info">
+        <h2>合成大基佬</h2>
+        <p>物理合成玩法！相同基佬碰撞合成更大的基佬，看你能顶到多少分。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/xiaoxiaole/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🍬</div>
+      <div class="info">
+        <h2>嘘嘘消消乐</h2>
+        <p>经典三消玩法，交换相邻嘘嘘表情，凑成三个以上消除，连击得分更高！</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/wuziqi/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">⚫</div>
+      <div class="info">
+        <h2>嘘嘘五子棋</h2>
+        <p>人机对战五子棋，黑先白后，率先连成五子者获胜。AI 有点东西！</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/snake/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🐍</div>
+      <div class="info">
+        <h2>嘘嘘贪吃蛇</h2>
+        <p>经典贪吃蛇！滑动或方向键控制小蛇吃泡泡，越长越难，撞到自己就完蛋。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/saolei/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">💣</div>
+      <div class="info">
+        <h2>嘘嘘扫雷</h2>
+        <p>经典扫雷！根据数字推理地雷位置，插旗标记，扫清全部地雷获胜。首点保证安全。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/memory/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🃏</div>
+      <div class="info">
+        <h2>嘘嘘记忆翻牌</h2>
+        <p>翻牌配对考验记忆力，找出所有相同嘘嘘表情，步数越少越厉害！</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/tetris/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🧱</div>
+      <div class="info">
+        <h2>嘘嘘俄罗斯方块</h2>
+        <p>经典俄罗斯方块！旋转、移动、直落，凑满一行消除得分，支持触屏和键盘。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/dadishu/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🐹</div>
+      <div class="info">
+        <h2>嘘嘘打地鼠</h2>
+        <p>30 秒手速挑战！地鼠冒头就敲，越到后面节奏越快，看看你能敲中几只。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/dazhuankuai/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🏓</div>
+      <div class="info">
+        <h2>嘘嘘打砖块</h2>
+        <p>经典打砖块！滑动控制弹板发射泡泡球，打碎全部砖块过关，关卡无限挑战。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/yitiao/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🦘</div>
+      <div class="info">
+        <h2>嘘嘘一跳</h2>
+        <p>按住蓄力松手起跳！落在下一个墩子上，命中中心连击加分，跳空就摔啦。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <a href="./assets/games/yanse/" style="text-decoration:none;color:inherit;display:block;margin-top:14px;">
+    <div class="game-card">
+      <div class="icon">🎨</div>
+      <div class="info">
+        <h2>嘘嘘颜色大挑战</h2>
+        <p>考验色彩敏锐度！找出颜色不同的那一块，越往后差距越小，看看你的眼力。</p>
+      </div>
+      <div class="go">▶</div>
+    </div>
+  </a>
+
+  <footer>
+    更多游戏锐意制作中……<br>
+    灵感来自 <a href="https://milkyfrog.com/games" target="_blank" rel="noopener">milkyfrog.com</a> 奶蛙游戏宇宙
+  </footer>
+</div>
+</body>
+</html>

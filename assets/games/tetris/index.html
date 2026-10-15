@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>嘘嘘俄罗斯方块</title>
+<style>
+:root{
+  --bg:#e9f6fc; --ink:#2c4a5a; --accent:#36b3e3; --accent-dark:#238ab3;
+  --bubble:#cdeaf7; --radius:14px; --board:#a8cce0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:linear-gradient(180deg,#d8f0fb 0%,var(--bg) 40%,#f4fbff 100%);
+  min-height:100vh;color:var(--ink);
+}
+.wrap{max-width:480px;margin:0 auto;padding:16px 14px 40px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.back{
+  width:38px;height:38px;border:none;border-radius:50%;background:#fff;color:var(--accent-dark);
+  font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(44,116,150,.15);flex-shrink:0;
+}
+h1{font-size:22px;font-weight:800;letter-spacing:1px}
+h1 span{color:var(--accent-dark)}
+.main{display:flex;gap:14px;align-items:flex-start}
+#stage{
+  position:relative;flex:1;
+  background:var(--board);border-radius:18px;
+  box-shadow:0 6px 20px rgba(44,116,150,.22);
+  touch-action:none;
+}
+#cv{width:100%;display:block;border-radius:18px}
+.side{width:104px;display:flex;flex-direction:column;gap:10px}
+.panel{
+  background:#fff;border-radius:var(--radius);padding:8px;
+  box-shadow:0 2px 10px rgba(44,116,150,.1);text-align:center;
+}
+.panel .label{font-size:11px;color:#7ba3b5}
+.panel .val{font-size:20px;font-weight:800;color:var(--accent-dark)}
+.panel.next canvas{display:block;margin:4px auto 0}
+button.btn{
+  border:none;border-radius:var(--radius);background:var(--accent);color:#fff;
+  font-size:14px;font-weight:700;padding:9px 0;cursor:pointer;width:100%;
+  box-shadow:0 3px 10px rgba(54,179,227,.35);
+}
+button.btn:active{background:var(--accent-dark)}
+#dpad{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px;
+}
+#dpad button{
+  border:none;border-radius:12px;background:#fff;color:var(--accent-dark);
+  font-size:20px;padding:14px 0;cursor:pointer;box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
+#dpad button:active{background:var(--bubble)}
+#overlay{
+  position:absolute;inset:0;background:rgba(233,246,252,.94);border-radius:18px;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+}
+#overlay.show{display:flex}
+#overlay h2{font-size:26px;font-weight:900}
+#overlay p{font-size:15px;color:#5b8296}
+#hint{text-align:center;font-size:13px;color:#7ba3b5;margin-top:12px;line-height:1.7}
+footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
+@media (min-width:600px){
+  h1{font-size:26px}
+  .side{width:120px}
+  #dpad{display:none}
+}
+@media (min-width:1024px){
+  .wrap{max-width:560px;padding-top:40px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <h1>嘘嘘<span>俄罗斯方块</span></h1>
+  </header>
+  <div class="main">
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="overlay">
+        <h2>游戏结束</h2>
+        <p id="ovText"></p>
+        <button class="btn" id="ovBtn">再来一局</button>
+      </div>
+    </div>
+    <div class="side">
+      <div class="panel"><div class="label">得分</div><div class="val" id="score">0</div></div>
+      <div class="panel"><div class="label">最佳</div><div class="val" id="best">0</div></div>
+      <div class="panel"><div class="label">消除行数</div><div class="val" id="lines">0</div></div>
+      <div class="panel next"><div class="label">下一个</div><canvas id="next" width="80" height="80"></canvas></div>
+      <button class="btn" id="pause">暂停</button>
+      <button class="btn" id="restart">重开</button>
+    </div>
+  </div>
+  <div id="dpad">
+    <button data-a="left">◀</button>
+    <button data-a="rot">⟳</button>
+    <button data-a="right">▶</button>
+    <button data-a="down">▼</button>
+    <button data-a="drop">⤓</button>
+  </div>
+  <div id="hint">← → 移动，↑ 旋转，↓ 加速，空格直落。手机用下方按钮或滑动操作。凑满一行消除得分！</div>
+  <footer>嘘嘘游戏 · 合集</footer>
+</div>
+<script>
+(function(){
+"use strict";
+var COLS=10, ROWS=20;
+var COLORS=['#4fc3f7','#36b3e3','#7ed6f2','#5ab8e8','#2f9fc9','#8fd3f4','#63c4ec'];
+// 7 种方块（SRS 形状，4x4 或 3x3 矩阵）
+var SHAPES=[
+  [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
+  [[1,0,0],[1,1,1],[0,0,0]],                 // J
+  [[0,0,1],[1,1,1],[0,0,0]],                 // L
+  [[1,1],[1,1]],                             // O
+  [[0,1,1],[1,1,0],[0,0,0]],                 // S
+  [[0,1,0],[1,1,1],[0,0,0]],                 // T
+  [[1,1,0],[0,1,1],[0,0,0]]                  // Z
+];
+
+var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+var ncv=document.getElementById('next'), nctx=ncv.getContext('2d');
+var stage=document.getElementById('stage');
+var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best'), linesEl=document.getElementById('lines');
+var overlay=document.getElementById('overlay'), ovText=document.getElementById('ovText');
+var pauseBtn=document.getElementById('pause');
+
+var cell=0, dpr=1, W=0, H=0;
+var grid, cur, nxt, bag=[], score=0, lines=0, dropTimer=null, paused=false, over=false;
+var best=+(localStorage.getItem('xuxu_tetris_best')||0);
+bestEl.textContent=best;
+
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  W=stage.clientWidth;
+  if(!(W>0))return;
+  cell=W/COLS;
+  H=cell*ROWS;
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+window.addEventListener('resize',resize);
+
+function nextFromBag(){
+  if(!bag.length){
+    bag=[0,1,2,3,4,5,6];
+    for(var i=bag.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=bag[i];bag[i]=bag[j];bag[j]=t;}
+  }
+  var k=bag.pop();
+  return {k:k, m:SHAPES[k].map(function(r){return r.slice();}), x:Math.floor((COLS-SHAPES[k].length)/2), y:0};
+}
+
+function init(){
+  grid=[];
+  for(var r=0;r<ROWS;r++)grid.push(new Array(COLS).fill(-1));
+  bag=[]; score=0; lines=0; over=false; paused=false;
+  scoreEl.textContent=0; linesEl.textContent=0;
+  overlay.classList.remove('show');
+  pauseBtn.textContent='暂停';
+  cur=nextFromBag(); nxt=nextFromBag();
+  drawNext();
+  clearInterval(dropTimer);
+  dropTimer=setInterval(tick,600);
+  draw();
+}
+
+function collide(m,x,y){
+  for(var r=0;r<m.length;r++)for(var c=0;c<m[r].length;c++){
+    if(!m[r][c])continue;
+    var rr=y+r, cc=x+c;
+    if(cc<0||cc>=COLS||rr>=ROWS)return true;
+    if(rr>=0&&grid[rr][cc]>=0)return true;
+  }
+  return false;
+}
+
+function rotate(m){
+  var n=m.length, out=[];
+  for(var r=0;r<n;r++){out.push([]);for(var c=0;c<n;c++)out[r].push(m[n-1-c][r]);}
+  return out;
+}
+
+function tryRotate(){
+  var rm=rotate(cur.m);
+  for(var dx=0;dx<2;dx++){
+    if(!collide(rm,cur.x+dx,cur.y)){cur.m=rm;cur.x+=dx;return;}
+    if(!collide(rm,cur.x-dx,cur.y)){cur.m=rm;cur.x-=dx;return;}
+  }
+}
+
+function merge(){
+  cur.m.forEach(function(row,r){
+    row.forEach(function(v,c){
+      if(v&&cur.y+r>=0)grid[cur.y+r][cur.x+c]=cur.k;
+    });
+  });
+  // 消行
+  var cleared=0;
+  for(var r=ROWS-1;r>=0;r--){
+    if(grid[r].every(function(v){return v>=0;})){
+      grid.splice(r,1);
+      grid.unshift(new Array(COLS).fill(-1));
+      cleared++; r++;
+    }
+  }
+  if(cleared){
+    lines+=cleared;
+    score+=[0,100,300,500,800][cleared];
+    scoreEl.textContent=score;
+    linesEl.textContent=lines;
+    if(score>best){best=score;localStorage.setItem('xuxu_tetris_best',best);bestEl.textContent=best;}
+  }
+  cur=nxt; nxt=nextFromBag();
+  drawNext();
+  if(collide(cur.m,cur.x,cur.y))end();
+}
+
+function tick(){
+  if(paused||over)return;
+  if(!collide(cur.m,cur.x,cur.y+1)){cur.y++;}
+  else merge();
+  draw();
+}
+
+function hardDrop(){
+  while(!collide(cur.m,cur.x,cur.y+1))cur.y++;
+  merge(); draw();
+}
+
+function move(dc){
+  if(paused||over)return;
+  if(!collide(cur.m,cur.x+dc,cur.y)){cur.x+=dc;draw();}
+}
+
+function end(){
+  over=true;
+  clearInterval(dropTimer);
+  ovText.textContent='本局得分 '+score+' · 消除 '+lines+' 行 · 最佳 '+best;
+  overlay.classList.add('show');
+}
+
+function draw(){
+  if(!grid)return;
+  ctx.clearRect(0,0,W,H);
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    ctx.fillStyle=(r+c)%2?'rgba(255,255,255,.10)':'rgba(255,255,255,.20)';
+    ctx.fillRect(c*cell,r*cell,cell,cell);
+    if(grid[r][c]>=0){block(ctx,c*cell,r*cell,COLORS[grid[r][c]]);}
+  }
+  cur.m.forEach(function(row,r){
+    row.forEach(function(v,c){
+      if(v&&cur.y+r>=0)block(ctx,(cur.x+c)*cell,(cur.y+r)*cell,COLORS[cur.k]);
+    });
+  });
+}
+
+function block(context,x,y,color){
+  context.fillStyle=color;
+  context.beginPath();
+  var rad=Math.max(2,cell*0.12);
+  var m=1, s=cell-2;
+  context.moveTo(x+m+rad,y+m);
+  context.arcTo(x+m+s,y+m,x+m+s,y+m+s,rad);
+  context.arcTo(x+m+s,y+m+s,x+m,y+m+s,rad);
+  context.arcTo(x+m,y+m+s,x+m,y+m,rad);
+  context.arcTo(x+m,y+m,x+m+s,y+m,rad);
+  context.fill();
+  context.fillStyle='rgba(255,255,255,.35)';
+  context.fillRect(x+m+3,y+m+3,cell-8,cell*0.16);
+}
+
+function drawNext(){
+  nctx.clearRect(0,0,80,80);
+  var m=SHAPES[nxt.k];
+  var size=16, ox=(80-m.length*size)/2, oy=(80-m.length*size)/2;
+  m.forEach(function(row,r){row.forEach(function(v,c){
+    if(v)block(nctx,ox+c*size,oy+r*size,COLORS[nxt.k]);
+  });});
+}
+
+// 控制
+window.addEventListener('keydown',function(e){
+  if(e.key==='ArrowLeft'){move(-1);e.preventDefault();}
+  else if(e.key==='ArrowRight'){move(1);e.preventDefault();}
+  else if(e.key==='ArrowUp'){tryRotate();draw();e.preventDefault();}
+  else if(e.key==='ArrowDown'){tick();e.preventDefault();}
+  else if(e.key===' '){hardDrop();e.preventDefault();}
+  else if(e.key==='p'||e.key==='P'){togglePause();}
+});
+document.querySelectorAll('#dpad button').forEach(function(b){
+  b.addEventListener('click',function(){
+    var a=b.getAttribute('data-a');
+    if(a==='left')move(-1);
+    else if(a==='right')move(1);
+    else if(a==='rot'){tryRotate();draw();}
+    else if(a==='down')tick();
+    else if(a==='drop')hardDrop();
+  });
+});
+// 滑动：左右滑移动，下滑加速，上滑旋转
+var ts=null;
+cv.addEventListener('pointerdown',function(e){ts={x:e.clientX,y:e.clientY,moved:false};});
+cv.addEventListener('pointermove',function(e){
+  if(!ts||paused||over)return;
+  var dx=e.clientX-ts.x;
+  if(Math.abs(dx)>cell*0.9){
+    move(dx>0?1:-1);
+    ts.x=e.clientX; ts.moved=true;
+  }
+});
+cv.addEventListener('pointerup',function(e){
+  if(!ts)return;
+  var dy=e.clientY-ts.y;
+  if(!ts.moved&&Math.abs(dy)<10){tryRotate();draw();}
+  else if(dy>cell*1.5&&!ts.moved){hardDrop();}
+  ts=null;
+});
+
+function togglePause(){
+  paused=!paused;
+  pauseBtn.textContent=paused?'继续':'暂停';
+}
+pauseBtn.addEventListener('click',togglePause);
+document.getElementById('restart').addEventListener('click',init);
+document.getElementById('ovBtn').addEventListener('click',init);
+
+resize();
+init();
+})();
+</script>
+</body>
+</html>

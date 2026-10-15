@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>嘘嘘一跳</title>
+<style>
+:root{
+  --bg:#e9f6fc; --ink:#2c4a5a; --accent:#36b3e3; --accent-dark:#238ab3;
+  --radius:14px; --board:#a8cce0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:linear-gradient(180deg,#d8f0fb 0%,var(--bg) 40%,#f4fbff 100%);
+  min-height:100vh;color:var(--ink);
+  user-select:none;-webkit-user-select:none;
+}
+.wrap{max-width:480px;margin:0 auto;padding:16px 14px 40px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.back{
+  width:38px;height:38px;border:none;border-radius:50%;background:#fff;color:var(--accent-dark);
+  font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(44,116,150,.15);flex-shrink:0;
+}
+h1{font-size:22px;font-weight:800;letter-spacing:1px}
+h1 span{color:var(--accent-dark)}
+.toolbar{display:flex;gap:10px;margin-bottom:14px}
+.stat{
+  flex:1;background:#fff;border-radius:var(--radius);padding:8px 10px;
+  box-shadow:0 2px 10px rgba(44,116,150,.1);text-align:center;
+}
+.stat .label{font-size:11px;color:#7ba3b5}
+.stat .val{font-size:20px;font-weight:800;color:var(--accent-dark)}
+button.btn{
+  border:none;border-radius:var(--radius);background:var(--accent);color:#fff;
+  font-size:14px;font-weight:700;padding:9px 16px;cursor:pointer;
+  box-shadow:0 3px 10px rgba(54,179,227,.35);
+}
+button.btn:active{background:var(--accent-dark)}
+#stage{
+  position:relative;width:100%;
+  background:linear-gradient(180deg,#bfe4f5 0%,var(--board) 100%);
+  border-radius:18px;
+  box-shadow:0 6px 20px rgba(44,116,150,.22);
+  touch-action:none;
+}
+#cv{width:100%;display:block;border-radius:18px}
+#overlay{
+  position:absolute;inset:0;background:rgba(233,246,252,.94);border-radius:18px;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+}
+#overlay.show{display:flex}
+#overlay h2{font-size:26px;font-weight:900}
+#overlay p{font-size:15px;color:#5b8296;text-align:center;padding:0 20px;line-height:1.7}
+#hint{text-align:center;font-size:13px;color:#7ba3b5;margin-top:12px;line-height:1.7}
+footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
+@media (min-width:600px){h1{font-size:26px}}
+@media (min-width:1024px){.wrap{max-width:560px;padding-top:40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <h1>嘘嘘<span>一跳</span></h1>
+  </header>
+  <div class="toolbar">
+    <div class="stat"><div class="label">得分</div><div class="val" id="score">0</div></div>
+    <div class="stat"><div class="label">最佳</div><div class="val" id="best">0</div></div>
+    <button class="btn" id="restart">重开</button>
+  </div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="overlay" class="show">
+      <h2>嘘嘘一跳</h2>
+      <p>按住屏幕蓄力，松手起跳，落在下一个墩子上。中心命中得 2 分，普通落上得 1 分，跳空就结束！</p>
+      <button class="btn" id="ovBtn">开始游戏</button>
+    </div>
+  </div>
+  <div id="hint">按住蓄力越久跳得越远。连续中心命中会连击加分！</div>
+  <footer>嘘嘘游戏 · 合集</footer>
+</div>
+<script>
+(function(){
+"use strict";
+var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+var stage=document.getElementById('stage');
+var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
+var overlay=document.getElementById('overlay'), ovBtn=document.getElementById('ovBtn');
+
+var W=0,H=0,dpr=1;
+var best=+(localStorage.getItem('xuxu_jump_best')||0);
+bestEl.textContent=best;
+
+// 等轴视角
+var PLAYER_EMO='🫧';
+var platformColors=['#7dc9ec','#63bce8','#8fd6f3','#5ab4e4','#a3def6'];
+var blocks=[], player, score=0, combo=0, charging=false, chargeT=0, playing=false, dead=false, camX=0, camY=0;
+var lastT=0, jumping=false;
+
+function toIso(x,y){ // 平面坐标 -> 屏幕坐标
+  return {x:(x-y)*0.87, y:(x+y)*0.5};
+}
+
+function makeBlock(x,y,size,first){
+  return {x:x,y:y,s:size,color:platformColors[Math.floor(Math.random()*platformColors.length)],pop:first?1:0};
+}
+
+function init(){
+  score=0; combo=0; dead=false; playing=true;
+  scoreEl.textContent=0;
+  overlay.classList.remove('show');
+  blocks=[makeBlock(0,0,56,true), makeBlock(130,0,52)];
+  blocks[0].prevCenter=true;
+  player={bx:0,by:0,sx:0,sy:0,tx:0,ty:0,jumpT:1};
+  spawnNext();
+  camX=0;camY=0;
+}
+
+function spawnNext(){
+  var prev=blocks[blocks.length-1];
+  var dir=Math.random()<0.5?'x':'y';
+  var dist=95+Math.random()*75;
+  var size=40+Math.random()*24;
+  var nx=prev.x+(dir==='x'?dist:0);
+  var ny=prev.y+(dir==='y'?dist:0);
+  blocks.push(makeBlock(nx,ny,size));
+}
+
+function screenPos(bx,by){
+  var iso=toIso(bx,by);
+  return {x:W/2+iso.x-camX, y:H*0.62+iso.y-camY};
+}
+
+function jump(){
+  var power=chargeT; // ms
+  var distFlat=Math.min(power/6.5,260); // 平面最大距离
+  var prev=blocks.find(function(b){return b.prevCenter;});
+  var target=blocks.find(function(b){return !b.prevCenter;});
+  // 跳跃方向：从当前墩指向目标墩
+  var dx=target.x-prev.x, dy=target.y-prev.y;
+  var len=Math.sqrt(dx*dx+dy*dy);
+  var ratio=distFlat/len;
+  player.sx=prev.x; player.sy=prev.y;
+  player.tx=prev.x+dx*Math.min(ratio,1.25);
+  player.ty=prev.y+dy*Math.min(ratio,1.25);
+  player.jumpT=0;
+  jumping=true;
+  chargeT=0;
+}
+
+function land(){
+  jumping=false;
+  var target=blocks.find(function(b){return !b.prevCenter;});
+  var prev=blocks.find(function(b){return b.prevCenter;});
+  var d=Math.sqrt(Math.pow(player.tx-target.x,2)+Math.pow(player.ty-target.y,2));
+  if(d>target.s*0.62){
+    // 跳空
+    die();
+    return;
+  }
+  var perfect=d<target.s*0.18;
+  if(perfect){
+    combo++;
+    score+=2*combo;
+  }else{
+    combo=0;
+    score+=1;
+  }
+  scoreEl.textContent=score;
+  if(score>best){best=score;localStorage.setItem('xuxu_jump_best',best);bestEl.textContent=best;}
+  target.prevCenter=true;
+  prev.prevCenter=false;
+  player.bx=player.tx; player.by=player.ty;
+  blocks.shift(); // 移除旧墩
+  // 找到当前所在墩（prevCenter）
+  spawnNext();
+  var cur=blocks.find(function(b){return b.prevCenter;});
+  player.bx=cur.x; player.by=cur.y;
+  player.tx=cur.x; player.ty=cur.y;
+  player.jumpT=1;
+}
+
+function die(){
+  playing=false; dead=true;
+  setTimeout(function(){
+    overlay.querySelector('h2').textContent='跳空啦 💦';
+    overlay.querySelector('p').textContent='本局得分 '+score+' · 最佳 '+best;
+    ovBtn.textContent='再来一局';
+    overlay.classList.add('show');
+  },600);
+}
+
+function update(dt){
+  if(jumping){
+    player.jumpT+=dt/420;
+    if(player.jumpT>=1){player.jumpT=1;land();}
+  }
+  // 相机跟随玩家
+  var ps=screenPos(player.bx,player.by);
+  var tx=ps.x-W/2, ty=ps.y-H*0.62;
+  camX+=(tx-camX)*Math.min(dt/300,1);
+  camY+=(ty-camY)*Math.min(dt/300,1);
+}
+
+function drawBlock(b){
+  var p=screenPos(b.x,b.y);
+  var s=b.s;
+  var h=s*0.55; // 墩高
+  // 顶面（菱形）
+  ctx.fillStyle=b.color;
+  ctx.beginPath();
+  ctx.moveTo(p.x,p.y-h-s);
+  ctx.lineTo(p.x+s*0.87,p.y-h-s+s*0.5);
+  ctx.lineTo(p.x,p.y-h-s+s);
+  ctx.lineTo(p.x-s*0.87,p.y-h-s+s*0.5);
+  ctx.closePath();
+  ctx.fill();
+  // 左面
+  ctx.fillStyle='rgba(0,0,0,.18)';
+  ctx.beginPath();
+  ctx.moveTo(p.x-s*0.87,p.y-h-s+s*0.5);
+  ctx.lineTo(p.x,p.y-h-s+s);
+  ctx.lineTo(p.x,p.y+s*0.0);
+  ctx.lineTo(p.x-s*0.87,p.y-s*0.5);
+  ctx.closePath();
+  ctx.fill();
+  // 右面
+  ctx.fillStyle='rgba(0,0,0,.30)';
+  ctx.beginPath();
+  ctx.moveTo(p.x+s*0.87,p.y-h-s+s*0.5);
+  ctx.lineTo(p.x,p.y-h-s+s);
+  ctx.lineTo(p.x,p.y);
+  ctx.lineTo(p.x+s*0.87,p.y-s*0.5);
+  ctx.closePath();
+  ctx.fill();
+  // 中心点提示
+  ctx.fillStyle='rgba(255,255,255,.55)';
+  ctx.beginPath();
+  ctx.ellipse(p.x,p.y-h-s+s*0.5,s*0.09,s*0.05,0,0,Math.PI*2);
+  ctx.fill();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  blocks.forEach(drawBlock);
+  // 玩家
+  var fx,fy;
+  if(jumping){
+    var t=player.jumpT;
+    fx=player.sx+(player.tx-player.sx)*t;
+    fy=player.sy+(player.ty-player.sy)*t;
+  }else{
+    fx=player.bx; fy=player.by;
+  }
+  var sp=screenPos(fx,fy);
+  var hop=jumping?Math.sin(Math.min(player.jumpT,1)*Math.PI)*46*(0.5+chargeT/1000):0;
+  var topBlock=blocks.find(function(b){return !b.prevCenter;});
+  var prevB=blocks.find(function(b){return b.prevCenter;});
+  var standH=(prevB?prevB.s:50)*0.55;
+  ctx.font='30px serif';
+  ctx.textAlign='center';
+  ctx.fillText(PLAYER_EMO,sp.x,sp.y-standH-hop-6);
+  // 蓄力条
+  if(charging&&chargeT>60){
+    var pct=Math.min(chargeT/1700,1);
+    ctx.fillStyle='rgba(255,255,255,.6)';
+    ctx.fillRect(W/2-50,H-24,100,8);
+    ctx.fillStyle='#238ab3';
+    ctx.fillRect(W/2-50,H-24,100*pct,8);
+  }
+}
+
+function loop(t){
+  requestAnimationFrame(loop);
+  var dt=lastT?t-lastT:16;
+  lastT=t;
+  if(playing){
+    if(charging)chargeT+=dt;
+    update(dt);
+  }
+  if(player)draw();
+}
+
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  W=stage.clientWidth;
+  if(!(W>0))return;
+  H=Math.round(W*1.15);
+  cv.width=W*dpr; cv.height=H*dpr;
+  cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',resize);
+
+function pressStart(e){
+  e.preventDefault();
+  if(!playing||jumping)return;
+  charging=true; chargeT=0;
+}
+function pressEnd(e){
+  if(!playing||jumping||!charging)return;
+  charging=false;
+  jump();
+}
+cv.addEventListener('pointerdown',pressStart);
+window.addEventListener('pointerup',pressEnd);
+
+ovBtn.addEventListener('click',init);
+document.getElementById('restart').addEventListener('click',init);
+
+resize();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

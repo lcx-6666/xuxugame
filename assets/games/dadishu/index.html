@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>嘘嘘打地鼠</title>
+<style>
+:root{
+  --bg:#e9f6fc; --ink:#2c4a5a; --accent:#36b3e3; --accent-dark:#238ab3;
+  --bubble:#cdeaf7; --radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:linear-gradient(180deg,#d8f0fb 0%,var(--bg) 40%,#f4fbff 100%);
+  min-height:100vh;color:var(--ink);
+}
+.wrap{max-width:480px;margin:0 auto;padding:16px 14px 40px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.back{
+  width:38px;height:38px;border:none;border-radius:50%;background:#fff;color:var(--accent-dark);
+  font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(44,116,150,.15);flex-shrink:0;
+}
+h1{font-size:22px;font-weight:800;letter-spacing:1px}
+h1 span{color:var(--accent-dark)}
+.toolbar{display:flex;gap:10px;margin-bottom:14px}
+.stat{
+  flex:1;background:#fff;border-radius:var(--radius);padding:8px 10px;
+  box-shadow:0 2px 10px rgba(44,116,150,.1);text-align:center;
+}
+.stat .label{font-size:11px;color:#7ba3b5}
+.stat .val{font-size:20px;font-weight:800;color:var(--accent-dark)}
+button.btn{
+  border:none;border-radius:var(--radius);background:var(--accent);color:#fff;
+  font-size:14px;font-weight:700;padding:9px 16px;cursor:pointer;
+  box-shadow:0 3px 10px rgba(54,179,227,.35);
+}
+button.btn:active{background:var(--accent-dark)}
+#field{
+  position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  background:#a8cce0;border-radius:18px;padding:16px;
+  box-shadow:0 6px 20px rgba(44,116,150,.22);
+}
+.hole{
+  position:relative;aspect-ratio:1/1.05;
+}
+.hole .pit{
+  position:absolute;left:8%;right:8%;bottom:6%;height:52%;
+  background:radial-gradient(ellipse at center,#7ba9c2 0%,#8db9d0 70%);
+  border-radius:50%;
+}
+.mole{
+  position:absolute;left:14%;right:14%;bottom:16%;height:0;
+  border-radius:40% 40% 30% 30%;
+  background:linear-gradient(180deg,#f7b8cf,#ef93b8);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(30px,9vw,44px);
+  overflow:hidden;transition:height .12s ease-out;cursor:pointer;
+  box-shadow:inset 0 -6px 0 rgba(0,0,0,.08);
+}
+.mole.up{height:78%}
+.mole.bonked{background:linear-gradient(180deg,#bde3f5,#8fd3f4)}
+.mole .hit{
+  position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+  font-size:20px;font-weight:900;color:var(--accent-dark);opacity:0;pointer-events:none;
+}
+.mole.bonked .hit{opacity:1}
+#overlay{
+  position:absolute;inset:0;background:rgba(233,246,252,.94);border-radius:18px;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5;
+}
+#overlay.show{display:flex}
+#overlay h2{font-size:26px;font-weight:900}
+#overlay p{font-size:15px;color:#5b8296}
+#hint{text-align:center;font-size:13px;color:#7ba3b5;margin-top:12px;line-height:1.7}
+footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
+@media (min-width:600px){
+  h1{font-size:26px}
+}
+@media (min-width:1024px){
+  .wrap{max-width:560px;padding-top:40px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <h1>嘘嘘<span>打地鼠</span></h1>
+  </header>
+  <div class="toolbar">
+    <div class="stat"><div class="label">得分</div><div class="val" id="score">0</div></div>
+    <div class="stat"><div class="label">最佳</div><div class="val" id="best">0</div></div>
+    <div class="stat"><div class="label">时间</div><div class="val" id="time">30</div></div>
+    <button class="btn" id="restart">开始</button>
+  </div>
+  <div id="field">
+    <div id="overlay" class="show">
+      <h2 id="ovTitle">准备好了吗？</h2>
+      <p id="ovText">点击开始，30 秒内能敲中多少只地鼠？</p>
+      <button class="btn" id="ovBtn">开始游戏</button>
+    </div>
+  </div>
+  <div id="hint">地鼠冒头时快速点击敲中得分，越到后面地鼠冒头越快！小心别敲空哦。</div>
+  <footer>嘘嘘游戏 · 合集</footer>
+</div>
+<script>
+(function(){
+"use strict";
+var GAME_TIME=30;
+var field=document.getElementById('field');
+var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best'), timeEl=document.getElementById('time');
+var overlay=document.getElementById('overlay'), ovTitle=document.getElementById('ovTitle'), ovText=document.getElementById('ovText');
+
+var score=0, playing=false, timeLeft=GAME_TIME, spawnTimer=null, countTimer=null;
+var best=+(localStorage.getItem('xuxu_whack_best')||0);
+bestEl.textContent=best;
+var holes=[];
+
+// 建 9 个洞
+for(var i=0;i<9;i++){
+  var h=document.createElement('div');
+  h.className='hole';
+  h.innerHTML='<div class="pit"></div><div class="mole">🐹<span class="hit">+10</span></div>';
+  field.appendChild(h);
+  holes.push({el:h, mole:h.querySelector('.mole'), busy:false});
+}
+holes.forEach(function(h){
+  h.mole.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    if(!playing||!h.mole.classList.contains('up')||h.done)return;
+    h.done=true;
+    score+=10;
+    scoreEl.textContent=score;
+    h.mole.classList.remove('up');
+    h.mole.classList.add('bonked');
+    setTimeout(function(){h.mole.classList.remove('bonked');},250);
+  });
+});
+
+function spawn(){
+  var free=holes.filter(function(h){return !h.busy;});
+  if(!free.length)return;
+  var h=free[Math.floor(Math.random()*free.length)];
+  h.busy=true; h.done=false;
+  h.mole.classList.add('up');
+  // 冒头停留时间随进度变短
+  var up=520-Math.floor((GAME_TIME-timeLeft)/GAME_TIME*280);
+  setTimeout(function(){
+    h.mole.classList.remove('up');
+    setTimeout(function(){h.busy=false;},150);
+  },up);
+}
+
+function start(){
+  score=0; timeLeft=GAME_TIME; playing=true;
+  scoreEl.textContent=0; timeEl.textContent=timeLeft;
+  overlay.classList.remove('show');
+  holes.forEach(function(h){h.mole.classList.remove('up');h.busy=false;});
+  clearInterval(spawnTimer); clearInterval(countTimer);
+  spawnTimer=setInterval(spawn,560);
+  countTimer=setInterval(function(){
+    timeLeft--;
+    timeEl.textContent=timeLeft;
+    if(timeLeft<=0)end();
+  },1000);
+}
+
+function end(){
+  playing=false;
+  clearInterval(spawnTimer); clearInterval(countTimer);
+  holes.forEach(function(h){h.mole.classList.remove('up');});
+  var isNew=false;
+  if(score>best){best=score;localStorage.setItem('xuxu_whack_best',best);bestEl.textContent=best;isNew=true;}
+  ovTitle.textContent=isNew?'新纪录！🎉':'时间到！';
+  ovText.textContent='敲中 '+(score/10)+' 只地鼠，得分 '+score+' · 最佳 '+best;
+  setTimeout(function(){overlay.classList.add('show');},400);
+}
+
+document.getElementById('restart').addEventListener('click',start);
+document.getElementById('ovBtn').addEventListener('click',start);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>合成大基佬</title>
+<style>
+  :root{
+    --bg:#e9f6fc;
+    --ink:#2c4a5a;
+    --ink-soft:#5d7d8d;
+    --accent:#36b3e3;
+    --accent-dark:#238ab3;
+    --bubble:#cdeaf7;
+    --danger:#ff5a5a;
+    --warn:#ffb340;
+    --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 14% 10%, rgba(54,179,227,.18), transparent 42%),
+      radial-gradient(circle at 86% 88%, rgba(120,210,240,.18), transparent 45%),
+      radial-gradient(circle at 72% 12%, rgba(180,230,250,.20), transparent 38%);
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+    color:var(--ink);
+    min-height:100%;
+    padding:18px 0 30px;
+    user-select:none;-webkit-user-select:none;
+    touch-action:manipulation;
+  }
+  .wrap{max-width:600px;margin:0 auto;padding:0 14px;}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .logo{display:flex;align-items:center;gap:8px;}
+  .logo .bubble{font-size:38px;line-height:1;filter:drop-shadow(0 2px 0 rgba(0,0,0,.08));animation:bob 2.4s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-5px) rotate(3deg)}}
+  h1{font-size:30px;letter-spacing:2px;font-weight:800;}
+  h1 small{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);letter-spacing:3px;margin-top:2px;}
+  .scores{display:flex;gap:8px;}
+  .scorebox{background:#fff;border:2px solid var(--bubble);border-radius:12px;padding:6px 14px;text-align:center;min-width:74px;box-shadow:0 2px 0 rgba(0,0,0,.05);}
+  .scorebox .label{font-size:11px;color:var(--ink-soft);letter-spacing:2px;}
+  .scorebox .value{font-size:20px;font-weight:800;line-height:1.2;color:var(--ink);}
+  .scorebox .value.bump{animation:bump .18s ease;}
+  @keyframes bump{50%{transform:scale(1.25);}}
+  .toolbar{display:flex;gap:8px;margin:14px 0 12px;flex-wrap:wrap;}
+  button.btn{
+    flex:1;min-width:88px;border:none;border-radius:999px;padding:10px 12px;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;letter-spacing:1px;
+    background:#fff;color:var(--ink);border:2px solid var(--bubble);box-shadow:0 3px 0 #b3dcee;
+    transition:transform .08s ease, box-shadow .08s ease;
+  }
+  button.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #b3dcee;}
+  button.btn.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;box-shadow:0 3px 0 #1f7aa0;}
+  button.btn.primary:active{box-shadow:0 1px 0 #1f7aa0;}
+  .tip{font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.7;}
+  .tip b{color:var(--accent-dark);}
+  #gameWrap{
+    position:relative;width:100%;background:linear-gradient(180deg,#cfe8f5 0%,#a8cce0 100%);
+    border-radius:calc(var(--radius) + 6px);
+    box-shadow:0 6px 0 rgba(35,90,115,.12), inset 0 2px 6px rgba(255,255,255,.5);
+    overflow:hidden;touch-action:none;
+  }
+  #gameCanvas{display:block;width:100%;touch-action:none;}
+  #overlay{
+    position:absolute;inset:0;border-radius:calc(var(--radius) + 6px);
+    background:rgba(233,246,252,.92);backdrop-filter:blur(3px);
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    text-align:center;z-index:5;
+  }
+  #overlay.show{display:flex;animation:fadein .3s ease;}
+  @keyframes fadein{from{opacity:0}}
+  #overlay .big{font-size:50px;}
+  #overlay .msg{font-size:22px;font-weight:800;letter-spacing:2px;}
+  #overlay .sub{font-size:13px;color:var(--ink-soft);}
+  #overlay button.btn{flex:none;padding:10px 28px;}
+  footer{margin-top:16px;padding:0 14px;font-size:11px;color:var(--ink-soft);text-align:center;line-height:1.8;}
+  footer a{color:var(--accent-dark);text-decoration:none;}
+
+  @media (min-width: 600px) {
+    body{padding:32px 0 40px;}
+    .wrap{max-width:640px;padding:0 20px;}
+    h1{font-size:36px;} h1 small{font-size:14px;}
+    .logo .bubble{font-size:46px;}
+    .scorebox{padding:8px 18px;min-width:90px;}
+    .scorebox .value{font-size:24px;}
+    button.btn{padding:12px 18px;font-size:16px;}
+    .tip{font-size:13px;}
+    footer{font-size:12px;margin-top:22px;}
+  }
+  @media (min-width: 1024px) {
+    body{padding:48px 0 60px;}
+    .wrap{max-width:720px;}
+    h1{font-size:42px;}
+    .logo .bubble{font-size:54px;}
+    .scorebox .value{font-size:28px;}
+    button.btn{padding:14px 22px;font-size:17px;}
+    .tip{font-size:14px;}
+    footer{font-size:13px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">
+    <span class="bubble">🌈</span>
+    <h1>合成大基佬<small>合成终极基佬</small></h1>
+  </div>
+  <div class="scores">
+    <div class="scorebox"><div class="label">分数</div><div class="value" id="score">0</div></div>
+    <div class="scorebox"><div class="label">最佳</div><div class="value" id="best">0</div></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn primary" id="btnNew">🌈 新开局</button>
+  <button class="btn" id="btnBack">🏠 大厅</button>
+</div>
+
+<div class="tip" id="tip">点屏幕/拖鼠标选择位置，松手或点击下放球；两个相同球碰撞合成更大的基佬！</div>
+
+<div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+  <div id="overlay">
+    <div class="big" id="ovEmoji">🫠</div>
+    <div class="msg" id="ovMsg">顶线了！</div>
+    <div class="sub" id="ovSub"></div>
+    <button class="btn primary" id="ovBtn">🌈 再来一局</button>
+  </div>
+</div>
+</div>
+
+<footer>
+  点击 / 拖动 / 滑动屏幕操作 · <a href="../../">🏠 返回嘘嘘游戏大厅</a><br>
+  灵感来自 <a href="https://milkyfrog.com/games" target="_blank" rel="noopener">milkyfrog.com</a> 奶蛙游戏宇宙
+</footer>
+
+<script src="./matter.min.js"></script>
+<script>
+(function(){
+"use strict";
+if(typeof Matter==='undefined'){
+  document.getElementById('tip').innerHTML='<b style="color:#ff5a5a">游戏加载失败：请检查网络连接后刷新页面（需要加载 Matter.js 物理引擎）</b>';
+  return;
+}
+
+var Engine=Matter.Engine, Bodies=Matter.Bodies, Composite=Matter.Composite,
+    Events=Matter.Events, Body=Matter.Body, Vector=Matter.Vector;
+
+var canvas=document.getElementById('gameCanvas');
+var ctx=canvas.getContext('2d');
+var wrap=document.getElementById('gameWrap');
+var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
+
+/* ========== 后台配置：把照片 URL 按顺序写在这里（可选） ========== */
+var PHOTOS=[
+  // "assets/photos/01.jpg",  // 第 1 级
+  // "assets/photos/02.jpg",  // 第 2 级
+  // ...
+];
+/* ============================================================== */
+
+var LEVELS=[
+  {r:16, color:'#eee4da', emoji:'💧', score:2},
+  {r:24, color:'#ede0c8', emoji:'🫧', score:4},
+  {r:32, color:'#f2b179', emoji:'🌊', score:8},
+  {r:42, color:'#f59563', emoji:'💦', score:16},
+  {r:54, color:'#f67c5f', emoji:'🚿', score:32},
+  {r:68, color:'#f65e3b', emoji:'🛁', score:64},
+  {r:84, color:'#edcf72', emoji:'🧼', score:128},
+  {r:102, color:'#edcc61', emoji:'🌀', score:256},
+  {r:122, color:'#edc850', emoji:'🐳', score:512},
+  {r:146, color:'#edc53f', emoji:'🦈', score:1024},
+  {r:174, color:'#edc22e', emoji:'👑', score:2048}
+];
+
+var BASE_W=400;
+var W, H, SCALE, LINE_Y, WALL_W=60;
+var engine, runner;
+var balls=[];
+var isPreview=false;
+var currentLevel=0, nextLevel=0;
+var mouseX=0, canDrop=true, gameOver=false, score=0, best=0;
+var dangerTimer=null;
+var photos={};
+
+function loadPhotos(){
+  PHOTOS.forEach(function(src,i){
+    if(i>=LEVELS.length)return;
+    var img=new Image(); img.crossOrigin='anonymous';
+    img.onload=function(){photos[i]=img;};
+    img.onerror=function(){};
+    img.src=src;
+  });
+}
+
+function resize(){
+  var rect=wrap.getBoundingClientRect();
+  W=Math.floor(rect.width);
+  H=Math.floor(W*1.35);
+  canvas.width=W; canvas.height=H;
+  SCALE=W/BASE_W;
+  LINE_Y=90*SCALE;
+}
+
+function radius(level){ return LEVELS[level].r*SCALE; }
+
+function init(){
+  if(engine){ Engine.clear(engine); Composite.clear(engine.world); engine=null; }
+  if(runner){ Matter.Runner.stop(runner); runner=null; }
+  balls=[]; score=0; gameOver=false; canDrop=true; dangerTimer=null;
+  updateScore(false);
+  document.getElementById('overlay').classList.remove('show');
+
+  engine=Engine.create();
+  engine.world.gravity.y=1.2;
+
+  var ground=Bodies.rectangle(W/2, H+WALL_W/2, W+200, WALL_W, {isStatic:true, render:{visible:false}, label:'wall'});
+  var leftWall=Bodies.rectangle(-WALL_W/2, H/2, WALL_W, H*2, {isStatic:true, render:{visible:false}, label:'wall'});
+  var rightWall=Bodies.rectangle(W+WALL_W/2, H/2, WALL_W, H*2, {isStatic:true, render:{visible:false}, label:'wall'});
+  Composite.add(engine.world, [ground,leftWall,rightWall]);
+
+  Events.on(engine, 'collisionStart', onCollision);
+  Events.on(engine, 'afterUpdate', onUpdate);
+
+  runner=Matter.Runner.create();
+  Matter.Runner.run(runner, engine);
+
+  nextLevel=randomStartLevel();
+  currentLevel=randomStartLevel();
+  mouseX=W/2;
+  requestAnimationFrame(render);
+}
+
+function randomStartLevel(){
+  var r=Math.random();
+  return r<0.65?0:(r<0.9?1:2);
+}
+
+function createBall(x, y, level, isStatic){
+  var r=radius(level);
+  var ball=Bodies.circle(x, y, r, {
+    restitution:0.25, friction:0.08, frictionAir:0.015, density:0.002*(level+1),
+    isStatic:!!isStatic, label:'ball'
+  });
+  ball.level=level;
+  ball.r=r;
+  ball.dangerTime=0;
+  Composite.add(engine.world, ball);
+  balls.push(ball);
+  return ball;
+}
+
+function drop(){
+  if(gameOver||!canDrop)return;
+  canDrop=false;
+  var r=radius(currentLevel);
+  var x=Math.max(r+4, Math.min(W-r-4, mouseX));
+  createBall(x, LINE_Y-r-2, currentLevel, false);
+  currentLevel=nextLevel;
+  nextLevel=randomStartLevel();
+  setTimeout(function(){canDrop=true;}, 600);
+}
+
+function onCollision(e){
+  var pairs=e.pairs;
+  var merged=[];
+  pairs.forEach(function(p){
+    var a=p.bodyA, b=p.bodyB;
+    if(a.label!=='ball'||b.label!=='ball')return;
+    if(a.merged||b.merged||a.level!==b.level)return;
+    if(a.level>=LEVELS.length-1)return;
+    a.merged=true; b.merged=true;
+    merged.push({a:a,b:b});
+  });
+  merged.forEach(function(m){
+    var a=m.a, b=m.b;
+    var mid=Vector.mult(Vector.add(a.position,b.position),0.5);
+    var newLevel=a.level+1;
+    var vel=Vector.mult(Vector.add(a.velocity,b.velocity),0.5);
+    removeBall(a); removeBall(b);
+    var nb=createBall(mid.x, mid.y, newLevel, false);
+    Body.setVelocity(nb, vel);
+    nb.angularVelocity=(a.angularVelocity+b.angularVelocity)*0.5;
+    score+=LEVELS[newLevel].score;
+    updateScore(true);
+  });
+}
+
+function removeBall(ball){
+  var i=balls.indexOf(ball);
+  if(i>=0)balls.splice(i,1);
+  Composite.remove(engine.world, ball);
+}
+
+function onUpdate(){
+  if(gameOver)return;
+  var maxDanger=0;
+  balls.forEach(function(b){
+    if(b.merged)return;
+    var speed=Vector.magnitude(b.velocity);
+    var top=b.position.y-b.circleRadius;
+    if(top<LINE_Y && speed<0.8){
+      b.dangerTime+=16.67;
+      if(b.dangerTime>maxDanger)maxDanger=b.dangerTime;
+      if(b.dangerTime>2000){ gameOver=true; showOverlay(); }
+    }else{
+      b.dangerTime=0;
+    }
+  });
+  dangerTimer=maxDanger;
+}
+
+function render(){
+  if(!engine)return;
+  ctx.clearRect(0,0,W,H);
+
+  // 危险线
+  var dangerRatio=Math.min(1, (dangerTimer||0)/2000);
+  ctx.save();
+  ctx.setLineDash([10*SCALE, 8*SCALE]);
+  ctx.lineWidth=3*SCALE;
+  ctx.strokeStyle=dangerRatio>0.5?'#ff5a5a':'rgba(255,90,90,0.45)';
+  ctx.globalAlpha=0.6+0.4*Math.sin(Date.now()/150);
+  ctx.beginPath(); ctx.moveTo(0,LINE_Y); ctx.lineTo(W,LINE_Y); ctx.stroke();
+  ctx.restore();
+
+  // 球
+  balls.forEach(function(b){
+    if(b.merged)return;
+    drawBall(b.position.x, b.position.y, b.circleRadius, b.level, b.angle);
+  });
+
+  // 预览球
+  if(canDrop&&!gameOver){
+    var r=radius(currentLevel);
+    var x=Math.max(r+4, Math.min(W-r-4, mouseX));
+    var y=LINE_Y-r-2;
+    drawBall(x, y, r, currentLevel, 0, true);
+  }
+
+  if(!isPreview) requestAnimationFrame(render);
+}
+
+function drawBall(x, y, r, level, angle, isPreview){
+  var lv=LEVELS[level];
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(angle||0);
+
+  // 阴影
+  if(!isPreview){
+    ctx.beginPath(); ctx.arc(2,2,r,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,.12)'; ctx.fill();
+  }
+
+  // 主体
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+  if(photos[level]){
+    ctx.save(); ctx.clip();
+    var img=photos[level];
+    var side=Math.min(img.width,img.height);
+    var sx=(img.width-side)/2, sy=Math.max(0,(img.height-side)*0.15);
+    ctx.drawImage(img, sx, sy, side, side, -r, -r, r*2, r*2);
+    ctx.restore();
+    ctx.lineWidth=3;
+    ctx.strokeStyle=level>=6?'#36b3e3':'#fff';
+    ctx.stroke();
+  }else{
+    ctx.fillStyle=lv.color;
+    ctx.fill();
+    // 内高光
+    ctx.beginPath(); ctx.arc(-r*0.3,-r*0.3,r*0.25,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fill();
+  }
+
+  // emoji / 数字
+  ctx.fillStyle=level<=2?'#776e65':'#f9f6f2';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='bold '+(r*0.9)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(lv.emoji,0,0);
+
+  // 预览边框
+  if(isPreview){
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(54,179,227,.8)'; ctx.setLineDash([6,4]); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function updateScore(bump){
+  scoreEl.textContent=score;
+  if(score>best){best=score; localStorage.setItem('xuxu_hecheng_best',best);}
+  bestEl.textContent=best;
+  if(bump){scoreEl.classList.remove('bump');void scoreEl.offsetWidth;scoreEl.classList.add('bump');}
+}
+
+function showOverlay(){
+  document.getElementById('ovEmoji').textContent='🫠';
+  document.getElementById('ovMsg').textContent='顶到红线啦！';
+  document.getElementById('ovSub').textContent='本局得分 '+score+' · 再来合成更大的基佬？';
+  document.getElementById('overlay').classList.add('show');
+}
+
+function onPointerMove(e){
+  e.preventDefault();
+  var rect=canvas.getBoundingClientRect();
+  var clientX=e.touches?e.touches[0].clientX:e.clientX;
+  mouseX=(clientX-rect.left)*(W/rect.width);
+}
+function onPointerDown(e){
+  if(!canDrop||gameOver)return;
+  onPointerMove(e);
+}
+function onPointerUp(e){
+  if(e.cancelable)e.preventDefault();
+  drop();
+}
+
+canvas.addEventListener('mousemove',onPointerMove);
+canvas.addEventListener('touchmove',onPointerMove,{passive:false});
+canvas.addEventListener('mousedown',onPointerDown);
+canvas.addEventListener('touchstart',onPointerDown,{passive:false});
+canvas.addEventListener('mouseup',onPointerUp);
+canvas.addEventListener('touchend',onPointerUp,{passive:false});
+
+document.getElementById('btnNew').onclick=function(){if(confirm('重新开一局？当前进度会清空'))init();};
+document.getElementById('btnBack').onclick=function(){location.href='../../';};
+document.getElementById('ovBtn').onclick=init;
+
+best=parseInt(localStorage.getItem('xuxu_hecheng_best')||'0',10)||0;
+bestEl.textContent=best;
+loadPhotos();
+resize();
+init();
+window.addEventListener('resize',function(){location.reload();});
+
+/* 静态预览模式：URL 带 ?preview=1 时只画一帧，不跑物理引擎，方便截图 */
+if(location.search.indexOf('preview=1')>=0){
+  isPreview=true;
+  if(runner){Matter.Runner.stop(runner);}
+  engine.events = {};
+  canDrop=false;
+  // 画几个示例球
+  balls.forEach(function(b){Composite.remove(engine.world,b);});
+  balls=[];
+  var cx=W/2;
+  var examples=[
+    {x:cx, y:H-30, l:0},
+    {x:cx-50, y:H-90, l:1},
+    {x:cx+55, y:H-130, l:2},
+    {x:cx, y:H-190, l:3},
+    {x:cx, y:LINE_Y+40, l:4}
+  ];
+  examples.forEach(function(e){createBall(e.x,e.y,e.l,false);});
+  render();
+}
+})();
+</script>
+</body>
+</html>
