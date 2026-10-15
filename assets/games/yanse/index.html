@@ -62,6 +62,15 @@ button.btn:active{background:var(--accent-dark)}
 #overlay p{font-size:15px;color:#5b8296;text-align:center;line-height:1.7}
 #hint{text-align:center;font-size:13px;color:#7ba3b5;margin-top:14px;line-height:1.7}
 footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
+/* 嘘嘘头像只出现在标题位和反馈画面里，答题色块一律保持纯色，不影响色差判断 */
+.avatar{
+  width:38px;height:38px;margin-left:auto;border-radius:50%;flex-shrink:0;
+  background:#cdeaf7;border:2px solid #fff;box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
+#ov-face{
+  width:96px;height:96px;border-radius:50%;background:#cdeaf7;
+  box-shadow:0 0 0 4px #fff,0 6px 18px rgba(44,116,150,.25);
+}
 @media (min-width:600px){
   h1{font-size:26px}
   #grid{gap:14px}
@@ -74,6 +83,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <header>
     <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
     <h1>嘘嘘<span>颜色大挑战</span></h1>
+    <div class="avatar" id="avatar" title="嘘嘘"></div>
   </header>
   <div class="toolbar">
     <div class="stat"><div class="label">得分</div><div class="val" id="score">0</div></div>
@@ -87,10 +97,12 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
 <div id="overlay" class="show">
+  <div id="ov-face"></div>
   <h2>嘘嘘颜色大挑战</h2>
   <p>考验色彩敏锐度！15 秒起始时间，答对加时，颜色差距越来越小，看你能撑到多少分。</p>
   <button class="btn" id="ovBtn">开始挑战</button>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -98,6 +110,14 @@ var gridEl=document.getElementById('grid');
 var targetEl=document.getElementById('target');
 var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best'), timeEl=document.getElementById('time');
 var overlay=document.getElementById('overlay'), ovBtn=document.getElementById('ovBtn');
+var avatar=document.getElementById('avatar'), ovFace=document.getElementById('ov-face');
+
+/* 把嘘嘘的脸放到装饰位：编号超范围由 photos.js 自动回绕，XUXU 没加载就什么都不做 */
+function showFace(el,i){
+  if(el&&window.XUXU&&XUXU.COUNT)XUXU.setFace(el,i);
+}
+showFace(avatar,0);
+showFace(ovFace,1);
 
 var score=0, playing=false, timeLeft=15, timer=null;
 var best=+(localStorage.getItem('xuxu_color_best')||0);
@@ -126,11 +146,13 @@ function round(){
         if(i===odd){
           score++;
           scoreEl.textContent=score;
+          showFace(avatar,score);   // 答对反馈：换一张脸，色块本身不动
           if(score>best){best=score;localStorage.setItem('xuxu_color_best',best);bestEl.textContent=best;}
           timeLeft=Math.min(timeLeft+1.6,20);
           round();
         }else{
           b.classList.add('wrong');
+          showFace(avatar,10);      // 答错反馈：顶部头像换成另一张脸
           end();
         }
       });
@@ -144,6 +166,7 @@ function round(){
 function start(){
   score=0; timeLeft=15; playing=true;
   scoreEl.textContent=0; timeEl.textContent=15;
+  showFace(avatar,0);
   overlay.classList.remove('show');
   round();
   clearInterval(timer);
@@ -161,6 +184,7 @@ function end(){
   setTimeout(function(){
     overlay.querySelector('h2').textContent=isNew?'新纪录！🎉':'挑战结束';
     overlay.querySelector('p').textContent='得分 '+score+' · 最佳 '+best;
+    showFace(ovFace,isNew?8:10);    // 结束画面的嘘嘘头像：破纪录和没破纪录换脸
     ovBtn.textContent='再来一局';
     overlay.classList.add('show');
   },500);

@@ -105,6 +105,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div id="hint">方向键 / 滑动屏幕 / 点击方向钮控制小蛇，吃掉嘘嘘泡泡变长加分，撞墙或撞自己就结束！</div>
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -198,11 +199,16 @@ function draw(){
   for(var r=0;r<N;r++)for(var c=0;c<N;c++){
     if((r+c)%2)ctx.fillRect(c*cell,r*cell,cell,cell);
   }
-  // 食物
+  // 食物：画成嘘嘘的脸（每种食物=固定照片），照片没好退回 emoji
   if(food){
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.font=Math.round(cell*0.72)+'px serif';
-    ctx.fillText(food.k,food.c*cell+cell/2,food.r*cell+cell/2+cell*0.04);
+    var fx=food.c*cell+cell/2, fy=food.r*cell+cell/2;
+    var fi=FOODS.indexOf(food.k); if(fi<0)fi=0;
+    var fd=window.XUXU && XUXU.drawFace(ctx,fx,fy,cell*0.44,fi,{ring:'#fff',ringWidth:0.1});
+    if(!fd){
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.font=Math.round(cell*0.72)+'px serif';
+      ctx.fillText(food.k,fx,fy+cell*0.04);
+    }
   }
   // 蛇身
   for(var i=snake.length-1;i>=0;i--){
@@ -213,6 +219,11 @@ function draw(){
     var g=Math.round(200-90*t), b=Math.round(240-40*t);
     ctx.fillStyle='rgb('+Math.round(40+20*t)+','+g+','+b+')';
     ctx.fill();
+  }
+  // 蛇头画成嘘嘘的脸（身体保持原样，蛇形才看得出来）
+  if(window.XUXU){
+    var hh=snake[0];
+    XUXU.drawFace(ctx,hh.c*cell+cell/2,hh.r*cell+cell/2,cell*0.42,5,{ring:'#fff',ringWidth:0.1});
   }
   // 蛇眼
   var h=snake[0];
@@ -254,6 +265,8 @@ document.getElementById('ovBtn').addEventListener('click',init);
 
 resize();
 init();
+// 照片加载好后立即重绘（游戏有定时步进会重画，这里保证静止时也出现脸）
+if(window.XUXU){ XUXU.preload(function(){ if(!dead)draw(); }); }
 })();
 </script>
 </body>

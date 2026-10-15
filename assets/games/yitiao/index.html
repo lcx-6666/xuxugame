@@ -80,6 +80,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div id="hint">按住蓄力越久跳得越远。连续中心命中会连击加分！</div>
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -258,9 +259,12 @@ function draw(){
   var topBlock=blocks.find(function(b){return !b.prevCenter;});
   var prevB=blocks.find(function(b){return b.prevCenter;});
   var standH=(prevB?prevB.s:50)*0.55;
-  ctx.font='30px serif';
   ctx.textAlign='center';
-  ctx.fillText(PLAYER_EMO,sp.x,sp.y-standH-hop-6);
+  var py=sp.y-standH-hop-6;      // 角色基线，跟随跳跃位移
+  if(!(window.XUXU && XUXU.drawFace(ctx,sp.x,py-11,15,0,{ring:'#36b3e3',ringWidth:0.12}))){
+    ctx.font='30px serif';       // 照片没加载好就退回原 emoji
+    ctx.fillText(PLAYER_EMO,sp.x,py);
+  }
   // 蓄力条
   if(charging&&chargeT>60){
     var pct=Math.min(chargeT/1700,1);
@@ -311,6 +315,8 @@ document.getElementById('restart').addEventListener('click',init);
 
 resize();
 requestAnimationFrame(loop);
+// 主循环每帧重画，照片加载好后角色自然换成脸
+if(window.XUXU){ XUXU.preload(function(){}); }
 })();
 </script>
 </body>

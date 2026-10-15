@@ -65,6 +65,9 @@ button.btn:active{background:var(--accent-dark)}
   font-size:20px;font-weight:900;color:var(--accent-dark);opacity:0;pointer-events:none;
 }
 .mole.bonked .hit{opacity:1}
+.mole.hasface{color:transparent}
+/* 贴了照片后 .mole.bonked 的蓝底会被背景图盖住，改用压暗照片补回"敲中"的视觉反馈 */
+.mole.bonked.hasface{filter:brightness(.42) saturate(.25)}
 #overlay{
   position:absolute;inset:0;background:rgba(233,246,252,.94);border-radius:18px;
   display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5;
@@ -104,6 +107,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div id="hint">地鼠冒头时快速点击敲中得分，越到后面地鼠冒头越快！小心别敲空哦。</div>
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -123,7 +127,7 @@ for(var i=0;i<9;i++){
   h.className='hole';
   h.innerHTML='<div class="pit"></div><div class="mole">🐹<span class="hit">+10</span></div>';
   field.appendChild(h);
-  holes.push({el:h, mole:h.querySelector('.mole'), busy:false});
+  holes.push({el:h, mole:h.querySelector('.mole'), busy:false, pi:i});
 }
 holes.forEach(function(h){
   h.mole.addEventListener('pointerdown',function(e){
@@ -137,6 +141,21 @@ holes.forEach(function(h){
     setTimeout(function(){h.mole.classList.remove('bonked');},250);
   });
 });
+
+// 把地鼠换成嘘嘘的脸：每个洞固定对应一张照片，出现/缩回都不换脸（不闪烁）
+function applyFaces(){
+  if(!window.XUXU)return;
+  holes.forEach(function(h){
+    if(XUXU.ok(h.pi)){
+      XUXU.setFace(h.mole,h.pi);
+      h.mole.style.backgroundSize='cover';         // 内联写死，避免 bonked 规则把尺寸重置
+      h.mole.style.backgroundPosition='center 15%';
+      h.mole.classList.add('hasface');              // 隐藏 🐹（照片盖在上面）
+    }
+  });
+}
+applyFaces();
+if(window.XUXU){ XUXU.preload(applyFaces); }        // 照片加载好后补挂脸（加载失败则保留 🐹+粉色身体）
 
 function spawn(){
   var free=holes.filter(function(h){return !h.busy;});

@@ -96,6 +96,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div id="hint">点击选中一个嘘嘘，再点相邻的交换；或直接拖动滑动交换。凑成 3 个以上消除，连击有加分！步数用完游戏结束。</div>
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -261,9 +262,13 @@ function draw(){
     ctx.arc(x,y,sz/2+3,0,Math.PI*2);
     ctx.fillStyle=COLORS[k%COLORS.length];
     ctx.fill();
-    // 表情
-    ctx.font=Math.round(sz*0.82)+'px serif';
-    ctx.fillText(KINDS[k],x,y+sz*0.04);
+    // 表情：每种糖果=一张固定照片，照片没加载好就退回原 emoji
+    var drawn=false;
+    if(window.XUXU){ drawn=XUXU.drawFace(ctx,x,y,sz*0.5,k,{ring:COLORS[k%COLORS.length],ringWidth:0.12}); }
+    if(!drawn){
+      ctx.font=Math.round(sz*0.82)+'px serif';
+      ctx.fillText(KINDS[k],x,y+sz*0.04);
+    }
     ctx.restore();
   }
 }
@@ -399,6 +404,8 @@ document.getElementById('ovBtn').addEventListener('click',init);
 
 resize();
 init();
+// 照片是异步加载的：加载好一张就重画一次，否则闲置时永远看不到脸
+if(window.XUXU){ XUXU.preload(function(){ draw(); }); }
 })();
 </script>
 </body>

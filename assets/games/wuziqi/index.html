@@ -126,6 +126,7 @@
   灵感来自 <a href="https://milkyfrog.com/games" target="_blank" rel="noopener">milkyfrog.com</a> 奶蛙游戏宇宙
 </footer>
 
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -192,6 +193,13 @@ function draw(){
     }
     ctx.fillStyle=grad; ctx.fill();
     ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=1; ctx.stroke();
+    // 把棋子画成嘘嘘的脸：脸贴中心，外圈保留原深色(黑)/浅色(白)边——黑白一眼可分
+    if(window.XUXU){
+      var pi=(r*N+c)%XUXU.COUNT;
+      var fr=R*0.68;
+      var ring=board[r][c]===1?'rgba(255,255,255,.9)':'rgba(0,0,0,.5)';
+      XUXU.drawFace(ctx,x,y,fr,pi,{ring:ring,ringWidth:0.1});   // 没加载好就只剩原来的黑白渐变子
+    }
   }
   // last move marker
   if(history.length){
@@ -370,6 +378,8 @@ document.getElementById('ovBtn1').onclick=init;
 document.getElementById('ovBtn2').onclick=function(){location.href='../../';};
 
 resize(); init();
+// 静态重画型游戏：照片加载好一张就主动重画一次，否则脸永远不出现
+if(window.XUXU){ XUXU.preload(function(){ draw(); }); }
 window.addEventListener('resize',function(){resize(); draw();});
 })();
 </script>

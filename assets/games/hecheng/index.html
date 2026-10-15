@@ -154,11 +154,22 @@ var ctx=canvas.getContext('2d');
 var wrap=document.getElementById('gameWrap');
 var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
 
-/* ========== 后台配置：把照片 URL 按顺序写在这里（可选） ========== */
+/* ========== 后台配置：把照片 URL 按顺序写在这里（可选） ==========
+   顺序 = 等级：第 1 张给第 1 级（最小球），依次往上，最多 11 级。
+   路径相对本页面（assets/games/hecheng/），所以要用 ../../photos/。
+   ============================================================== */
 var PHOTOS=[
-  // "assets/photos/01.jpg",  // 第 1 级
-  // "assets/photos/02.jpg",  // 第 2 级
-  // ...
+  "../../photos/01.jpg",  // 第 1 级
+  "../../photos/02.jpg",  // 第 2 级
+  "../../photos/03.jpg",  // 第 3 级
+  "../../photos/04.jpg",  // 第 4 级
+  "../../photos/05.jpg",  // 第 5 级
+  "../../photos/06.jpg",  // 第 6 级
+  "../../photos/07.jpg",  // 第 7 级
+  "../../photos/08.jpg",  // 第 8 级
+  "../../photos/09.jpg",  // 第 9 级
+  "../../photos/10.jpg",  // 第 10 级
+  "../../photos/11.jpg"   // 第 11 级
 ];
 /* ============================================================== */
 
@@ -377,10 +388,20 @@ function drawBall(x, y, r, level, angle, isPreview){
   }
 
   // emoji / 数字
-  ctx.fillStyle=level<=2?'#776e65':'#f9f6f2';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.font='bold '+(r*0.9)+'px "PingFang SC","Microsoft YaHei",sans-serif';
-  ctx.fillText(lv.emoji,0,0);
+  if(photos[level]){
+    // 用了嘘嘘照片：不画大 emoji（会挡住脸），只在球底部标等级分
+    ctx.font='bold '+Math.max(9,r*0.40)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.lineWidth=Math.max(2,r*0.09);
+    ctx.strokeStyle='rgba(0,0,0,.6)';
+    ctx.strokeText(lv.score,0,r*0.60);
+    ctx.fillStyle='#fff';
+    ctx.fillText(lv.score,0,r*0.60);
+  }else{
+    ctx.fillStyle=level<=2?'#776e65':'#f9f6f2';
+    ctx.font='bold '+(r*0.9)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(lv.emoji,0,0);
+  }
 
   // 预览边框
   if(isPreview){

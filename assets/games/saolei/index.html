@@ -56,6 +56,9 @@ button.btn.ghost.active{background:var(--accent-dark);color:#fff}
 .cellbox.open{background:rgba(255,255,255,.45);cursor:default}
 .cellbox.flag{background:var(--bubble)}
 .cellbox.boom{background:#ff8f8f}
+/* 嘘嘘脸只贴在“未揭开”的格子表面；一旦揭开或插旗，背景图彻底消失，数字/雷/旗不受影响 */
+.cellbox.open,.cellbox.flag{background-image:none !important}
+.cellbox:not(.open):active{filter:brightness(.86)} /* 脸会盖住按下的底色，改用变暗保留手感反馈 */
 .cellbox[data-n="1"]{color:#36b3e3}.cellbox[data-n="2"]{color:#2fa66a}
 .cellbox[data-n="3"]{color:#f08c3a}.cellbox[data-n="4"]{color:#8a6fd6}
 .cellbox[data-n="5"]{color:#e05e7a}.cellbox[data-n="6"]{color:#25a5a5}
@@ -100,6 +103,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div id="hint">点击翻开格子，数字表示周围 8 格的地雷数；切到插旗模式（或电脑右键）标记地雷。翻开所有非雷格子即胜利！首次点击保证安全。</div>
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -138,6 +142,7 @@ function init(){
   for(var i=0;i<cols*rows;i++){
     var b=document.createElement('button');
     b.className='cellbox';
+    if(window.XUXU&&XUXU.COUNT)XUXU.setFace(b,i%XUXU.COUNT);  // 按格子位置发脸，11 张循环，和雷的分布无关
     (function(i){
       b.addEventListener('click',function(){clickCell(i);});
       b.addEventListener('contextmenu',function(e){e.preventDefault();toggleFlag(i);});
@@ -218,7 +223,7 @@ function checkWin(){
   if(openCount===cols*rows-totalMines){
     over=true;
     clearInterval(timer);
-    for(var j=0;j<cols*rows;j++)if(board[j]===-1)cells[j].textContent='🚩';
+    for(var j=0;j<cols*rows;j++)if(board[j]===-1){cells[j].textContent='🚩';cells[j].classList.add('flag');}
     ovTitle.textContent='胜利啦！🎉';
     ovText.textContent='用时 '+secs+' 秒扫清全部地雷！';
     overlay.classList.add('show');

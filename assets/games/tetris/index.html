@@ -106,6 +106,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div id="hint">← → 移动，↑ 旋转，↓ 加速，空格直落。手机用下方按钮或滑动操作。凑满一行消除得分！</div>
   <footer>嘘嘘游戏 · 合集</footer>
 </div>
+<script src="../../js/photos.js"></script>
 <script>
 (function(){
 "use strict";
@@ -251,20 +252,21 @@ function draw(){
   for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
     ctx.fillStyle=(r+c)%2?'rgba(255,255,255,.10)':'rgba(255,255,255,.20)';
     ctx.fillRect(c*cell,r*cell,cell,cell);
-    if(grid[r][c]>=0){block(ctx,c*cell,r*cell,COLORS[grid[r][c]]);}
+    if(grid[r][c]>=0){block(ctx,c*cell,r*cell,COLORS[grid[r][c]],grid[r][c],cell);}
   }
   cur.m.forEach(function(row,r){
     row.forEach(function(v,c){
-      if(v&&cur.y+r>=0)block(ctx,(cur.x+c)*cell,(cur.y+r)*cell,COLORS[cur.k]);
+      if(v&&cur.y+r>=0)block(ctx,(cur.x+c)*cell,(cur.y+r)*cell,COLORS[cur.k],cur.k,cell);
     });
   });
 }
 
-function block(context,x,y,color){
+function block(context,x,y,color,ki,sz){
+  sz=sz||cell;                      // 棋盘用真实格宽，next 预览用小格
   context.fillStyle=color;
   context.beginPath();
-  var rad=Math.max(2,cell*0.12);
-  var m=1, s=cell-2;
+  var rad=Math.max(2,sz*0.12);
+  var m=1, s=sz-2;
   context.moveTo(x+m+rad,y+m);
   context.arcTo(x+m+s,y+m,x+m+s,y+m+s,rad);
   context.arcTo(x+m+s,y+m+s,x+m,y+m+s,rad);
@@ -272,7 +274,20 @@ function block(context,x,y,color){
   context.arcTo(x+m,y+m,x+m+s,y+m,rad);
   context.fill();
   context.fillStyle='rgba(255,255,255,.35)';
-  context.fillRect(x+m+3,y+m+3,cell-8,cell*0.16);
+  context.fillRect(x+m+3,y+m+3,sz-8,sz*0.16);
+  // 脸贴在方块内部，四周保留原色当边框——哪些格子被占依然是唯一判断依据
+  if(window.XUXU && ki!=null){
+    var pad=sz*0.2;
+    var fw=s-pad*2, fh=s-pad*2;
+    if(fw>2 && fh>2 && XUXU.drawFaceRound(context,x+m+pad,y+m+pad,fw,fh,ki,rad)){
+      context.save();                              // 再描一圈原色边，方块边界更清晰
+      XUXU.roundPath(context,x+m+pad,y+m+pad,fw,fh,Math.max(2,fw*0.25));
+      context.lineWidth=Math.max(1,sz*0.06);
+      context.strokeStyle=color;
+      context.stroke();
+      context.restore();
+    }
+  }
 }
 
 function drawNext(){
@@ -280,7 +295,7 @@ function drawNext(){
   var m=SHAPES[nxt.k];
   var size=16, ox=(80-m.length*size)/2, oy=(80-m.length*size)/2;
   m.forEach(function(row,r){row.forEach(function(v,c){
-    if(v)block(nctx,ox+c*size,oy+r*size,COLORS[nxt.k]);
+    if(v)block(nctx,ox+c*size,oy+r*size,COLORS[nxt.k],nxt.k,size);
   });});
 }
 
@@ -332,6 +347,8 @@ document.getElementById('ovBtn').addEventListener('click',init);
 
 resize();
 init();
+// 照片加载好后重画棋盘和 next 预览（游戏有 600ms 步进，这里保证静止时也出现脸）
+if(window.XUXU){ XUXU.preload(function(){ draw(); if(nxt)drawNext(); }); }
 })();
 </script>
 </body>
