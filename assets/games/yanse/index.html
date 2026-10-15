@@ -37,6 +37,12 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+.opts{display:flex;gap:10px;margin-bottom:14px}
+select.btn{
+  flex:1;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:9px 8px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #target{
   height:90px;border-radius:18px;margin-bottom:14px;
   box-shadow:0 6px 20px rgba(44,116,150,.22);
@@ -91,6 +97,13 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
     <div class="stat"><div class="label">时间</div><div class="val" id="time">15</div></div>
     <button class="btn" id="restart">重开</button>
   </div>
+  <div class="opts">
+    <select class="btn" id="selDiff" title="难度">
+      <option value="easy">🌱 简单（20秒）</option>
+      <option value="normal">🌿 普通（15秒）</option>
+      <option value="hard">🌵 困难（10秒）</option>
+    </select>
+  </div>
   <div id="target">找到颜色不同的那一块</div>
   <div id="grid"></div>
   <div id="hint">每块颜色几乎一样，只有一块略有不同，点它！每答对一次加时，颜色差距越来越小。</div>
@@ -124,6 +137,15 @@ var gen=0; // 局数代记号：结束弹窗延迟 500ms，期间点了重开就
 var best=+(localStorage.getItem('xuxu_color_best')||0);
 bestEl.textContent=best;
 
+/* 难度：起始时间越短、颜色差缩得越快、加时上限越低就越难 */
+var DIFFS={
+  easy:{time:20, gapBase:17, decay:0.35, cap:24},
+  normal:{time:15, gapBase:14, decay:0.55, cap:20},
+  hard:{time:10, gapBase:11, decay:0.75, cap:16}
+};
+var diffKey=localStorage.getItem('xuxu_color_diff')||'normal';
+if(!DIFFS[diffKey])diffKey='normal';
+
 // HSL 颜色工具
 function hsl(h,s,l){return 'hsl('+h+','+s+'%,'+l+'%)';}
 
@@ -131,8 +153,9 @@ function round(){
   var h=Math.floor(Math.random()*360);
   var s=55+Math.random()*25;
   var l=48+Math.random()*14;
-  // 难度：分越高 ΔL 越小
-  var diff=Math.max(2.5, 14-score*0.55);
+  // 难度：分越高 ΔL 越小，缩得快慢由难度决定
+  var cfg=DIFFS[diffKey];
+  var diff=Math.max(2, cfg.gapBase-score*cfg.decay);
   var n= score<5?4: (score<12?6:9);   // 格子数量随分提升
   gridEl.style.gridTemplateColumns='repeat('+Math.sqrt(n)+',1fr)';
   var odd=Math.floor(Math.random()*n);
@@ -149,7 +172,7 @@ function round(){
           scoreEl.textContent=score;
           showFace(avatar,score);   // 答对反馈：换一张脸，色块本身不动
           if(score>best){best=score;localStorage.setItem('xuxu_color_best',best);bestEl.textContent=best;}
-          timeLeft=Math.min(timeLeft+1.6,20);
+          timeLeft=Math.min(timeLeft+1.6,DIFFS[diffKey].cap);
           round();
         }else{
           b.classList.add('wrong');
@@ -166,8 +189,8 @@ function round(){
 
 function start(){
   gen++;
-  score=0; timeLeft=15; playing=true;
-  scoreEl.textContent=0; timeEl.textContent=15;
+  score=0; timeLeft=DIFFS[diffKey].time; playing=true;
+  scoreEl.textContent=0; timeEl.textContent=Math.ceil(timeLeft);
   showFace(avatar,0);
   overlay.classList.remove('show');
   round();
@@ -196,6 +219,19 @@ function end(){
 
 ovBtn.addEventListener('click',start);
 document.getElementById('restart').addEventListener('click',start);
+var selDiff=document.getElementById('selDiff');
+selDiff.value=diffKey;
+/* 未开始时改难度：更新开始界面文案与时间显示 */
+function refreshIntro(){
+  timeEl.textContent=DIFFS[diffKey].time;
+  overlay.querySelector('p').textContent='考验色彩敏锐度！'+DIFFS[diffKey].time+' 秒起始时间，答对加时，颜色差距越来越小，看你能撑到多少分。';
+}
+refreshIntro();
+selDiff.addEventListener('change',function(){
+  diffKey=this.value;
+  localStorage.setItem('xuxu_color_diff',diffKey);
+  if(!playing){refreshIntro();round();}
+});
 
 round();
 })();

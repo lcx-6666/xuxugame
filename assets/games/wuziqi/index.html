@@ -49,6 +49,12 @@
   button.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #b3dcee;}
   button.btn.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;box-shadow:0 3px 0 #1f7aa0;}
   button.btn.primary:active{box-shadow:0 1px 0 #1f7aa0;}
+  select.btn{
+    flex:1;min-width:88px;border:none;border-radius:999px;padding:10px 12px;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;letter-spacing:1px;text-align:center;appearance:none;-webkit-appearance:none;
+    background:#fff;color:var(--ink);border:2px solid var(--bubble);box-shadow:0 3px 0 #b3dcee;
+  }
+  select.btn:disabled{opacity:.45;cursor:default;}
   .tip{font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.7;}
   .tip b{color:var(--accent-dark);}
   #boardWrap{position:relative;width:100%;max-width:560px;margin:0 auto;background:var(--board);border-radius:calc(var(--radius) + 6px);box-shadow:0 6px 0 rgba(35,90,115,.12), inset 0 2px 6px rgba(255,255,255,.4);overflow:hidden;}
@@ -94,7 +100,7 @@
 <header>
   <div class="logo">
     <span class="bubble">⚫</span>
-    <h1>嘘嘘五子棋<small>人机对战</small></h1>
+    <h1>嘘嘘五子棋<small id="subtitle">人机对战</small></h1>
   </div>
   <div class="status" id="status">黑棋 · 该你了</div>
 </header>
@@ -102,6 +108,11 @@
 <div class="toolbar">
   <button class="btn primary" id="btnNew">⚫ 新开局</button>
   <button class="btn" id="btnUndo">↩️ 悔棋</button>
+  <button class="btn" id="btnMode">👥 双人</button>
+  <select class="btn" id="selLevel" title="AI 难度">
+    <option value="easy">🤖 简单</option>
+    <option value="normal">🤖 普通</option>
+  </select>
   <button class="btn" id="btnBack">🏠 大厅</button>
 </div>
 
@@ -138,11 +149,13 @@ var statusEl=document.getElementById('status');
 var tipEl=document.getElementById('tip');
 
 var W, CELL, PAD, R;
-var board=[]; // 0 empty, 1 black(human), 2 white(AI)
+var board=[]; // 0 empty, 1 black, 2 white
 var history=[];
 var current=1; // black first
 var over=false, locked=false;
 var gen=0; // 局数代记号：AI 延迟落子若来自上一局，直接丢弃
+var mode='ai'; // 'ai' 人机（黑=玩家 白=AI） | 'pvp' 双人（黑白交替）
+var aiLevel=localStorage.getItem('xuxu_wuziqi_level')||'normal'; // AI 难度：easy 随便下 / normal 评分
 
 function resize(){
   var rect=wrap.getBoundingClientRect();
@@ -162,9 +175,19 @@ function init(){
   board=[]; for(var i=0;i<N;i++){var row=[];for(var j=0;j<N;j++)row.push(0);board.push(row);}
   history=[]; current=1; over=false; locked=false;
   hideOverlay();
-  statusEl.textContent='黑棋 · 该你了';
-  tipEl.textContent='你是黑棋，点击棋盘交叉点落子。率先连成五子获胜！';
+  updateStatus();
+  tipEl.textContent=mode==='ai'
+    ?'你是黑棋，点击棋盘交叉点落子。率先连成五子获胜！'
+    :'双人对弈：黑棋先行，黑白交替落子。率先连成五子获胜！';
   draw();
+}
+
+function updateStatus(){
+  if(mode==='ai'){
+    statusEl.textContent=current===1?'黑棋 · 该你了':'白棋 · AI 思考中…';
+  }else{
+    statusEl.textContent=(current===1?'黑棋':'白棋')+' · 该你了';
+  }
 }
 
 function draw(){
@@ -236,19 +259,24 @@ function place(r,c){
   board[r][c]=current;
   history.push({r:r,c:c,player:current});
   if(checkWin(r,c,current)){
-    over=true; draw(); showOverlay(current===1?'你赢了！':'AI 赢了'); return true;
+    over=true; draw();
+    showOverlay(mode==='ai'
+      ?(current===1?'你赢了！':'AI 赢了')
+      :(current===1?'黑棋赢了！':'白棋赢了！'));
+    return true;
   }
   if(history.length>=N*N){
     over=true; draw(); showOverlay('平局！'); return true;
   }
   current=3-current;
-  statusEl.textContent=current===1?'黑棋 · 该你了':'白棋 · AI 思考中…';
+  updateStatus();
   draw();
   return true;
 }
 
 function onClick(e){
-  if(over||locked||current!==1)return;
+  if(over||locked)return;
+  if(mode==='ai'&&current!==1)return;
   var rect=canvas.getBoundingClientRect();
   var clientX=e.touches?e.touches[0].clientX:e.clientX;
   var clientY=e.touches?e.touches[0].clientY:e.clientY;
@@ -258,11 +286,11 @@ function onClick(e){
   var r=Math.round(y/CELL);
   if(c<0||c>=N||r<0||r>=N)return;
   if(place(r,c)){
-    if(!over){
+    if(!over&&mode==='ai'){
       locked=true;
       var g=gen;
-      /* AI 400ms 后才落子；这期间若点了新开局/悔棋，迟到的白子会落进新棋盘 */
-      setTimeout(function(){ if(g===gen) aiMove(); },400);
+      /* AI 稍候再落子，让黑子先画上；这期间若点了新开局/悔棋，迟到的白子会落进新棋盘 */
+      setTimeout(function(){ if(g===gen) aiMove(); },150);
     }
   }
 }
@@ -290,13 +318,38 @@ function findBestMove(){
   var blockOpen4=findThreat(1,4,false);
   if(blockOpen4)return blockOpen4;
   // 5. create/best score
+  /* 以前对全盘 225 个空格逐个打分，手机上每一步都要算很久。
+     候选点只取已有棋子 2 格范围内的空位（五子棋落在远处没有意义），
+     一般从 225 砍到 40 上下，快 5 倍以上。 */
+  var cands=candidateCells();
+  if(aiLevel==='easy'){
+    // 简单：只抢上面的必胜/必堵，其余在候选点里随便挑
+    return cands[Math.floor(Math.random()*cands.length)];
+  }
   var best=null, bestScore=-1;
-  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
-    if(board[r][c]!==0)continue;
+  for(var i=0;i<cands.length;i++){
+    var r=cands[i].r, c=cands[i].c;
     var s=cellScore(r,c,2)+cellScore(r,c,1)*0.8;
     if(s>bestScore){bestScore=s; best={r:r,c:c};}
   }
   return best;
+}
+
+function candidateCells(){
+  var hot=[], i, r, c, dr, dc, rr, cc, any=false;
+  for(i=0;i<N;i++){var row=[];for(var j=0;j<N;j++)row.push(false);hot.push(row);}
+  for(r=0;r<N;r++)for(c=0;c<N;c++){
+    if(board[r][c]===0)continue;
+    any=true;
+    for(dr=-2;dr<=2;dr++)for(dc=-2;dc<=2;dc++){
+      rr=r+dr; cc=c+dc;
+      if(rr>=0&&rr<N&&cc>=0&&cc<N)hot[rr][cc]=true;
+    }
+  }
+  if(!any)return [{r:7,c:7}];
+  var out=[];
+  for(r=0;r<N;r++)for(c=0;c<N;c++)if(hot[r][c]&&board[r][c]===0)out.push({r:r,c:c});
+  return out;
 }
 
 function findThreat(player,len,exact){
@@ -371,20 +424,27 @@ function checkWin(r,c,player){
 
 function undo(){
   if(history.length===0||locked)return;
-  // undo AI + player last pair
-  var steps=history.length%2===0?2:1;
-  for(var i=0;i<steps;i++){
-    var m=history.pop();
-    if(m)board[m.r][m.c]=0;
+  if(mode==='ai'){
+    // 人机：一次撤掉 AI + 玩家最近一手，轮回到黑棋玩家
+    var steps=history.length%2===0?2:1;
+    for(var i=0;i<steps;i++){
+      var m=history.pop();
+      if(m)board[m.r][m.c]=0;
+    }
+    current=1;
+  }else{
+    // 双人：只撤最近一手，轮到被撤的那方重下
+    var m2=history.pop();
+    if(m2){board[m2.r][m2.c]=0; current=m2.player;}
   }
-  current=1; over=false;
-  statusEl.textContent='黑棋 · 该你了';
+  over=false;
+  updateStatus();
   hideOverlay();
   draw();
 }
 
 function showOverlay(msg){
-  document.getElementById('ovEmoji').textContent=msg.indexOf('你')>=0?'🏆':'🤖';
+  document.getElementById('ovEmoji').textContent=msg.indexOf('AI')>=0?'🤖':'🏆';
   document.getElementById('ovMsg').textContent=msg;
   document.getElementById('ovSub').textContent='五子连珠，功德圆满';
   document.getElementById('overlay').classList.add('show');
@@ -394,8 +454,22 @@ function hideOverlay(){document.getElementById('overlay').classList.remove('show
 canvas.addEventListener('mousedown',onClick);
 canvas.addEventListener('touchstart',onClick,{passive:false});
 
+var selLevel=document.getElementById('selLevel');
+selLevel.value=aiLevel;
+selLevel.onchange=function(){
+  aiLevel=this.value;
+  localStorage.setItem('xuxu_wuziqi_level',aiLevel);
+};
+
 document.getElementById('btnNew').onclick=init;
 document.getElementById('btnUndo').onclick=undo;
+document.getElementById('btnMode').onclick=function(){
+  mode=mode==='ai'?'pvp':'ai';
+  this.textContent=mode==='ai'?'👥 双人':'🤖 人机';
+  selLevel.disabled=(mode==='pvp');
+  document.getElementById('subtitle').textContent=mode==='ai'?'人机对战':'双人对弈';
+  init();
+};
 document.getElementById('btnBack').onclick=function(){location.href='../../../index.html';};
 document.getElementById('ovBtn1').onclick=init;
 document.getElementById('ovBtn2').onclick=function(){location.href='../../../index.html';};

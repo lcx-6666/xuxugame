@@ -36,6 +36,12 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+.opts{display:flex;gap:10px;margin-bottom:14px}
+select.btn{
+  flex:1;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:9px 8px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #field{
   position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
   background:#a8cce0;border-radius:18px;padding:16px;
@@ -97,6 +103,18 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
     <div class="stat"><div class="label">时间</div><div class="val" id="time">30</div></div>
     <button class="btn" id="restart">开始</button>
   </div>
+  <div class="opts">
+    <select class="btn" id="selDiff" title="难度">
+      <option value="easy">🌱 简单</option>
+      <option value="normal">🌿 普通</option>
+      <option value="hard">🌵 困难</option>
+    </select>
+    <select class="btn" id="selTime" title="时长">
+      <option value="20">⏱ 20 秒</option>
+      <option value="30">⏱ 30 秒</option>
+      <option value="60">⏱ 60 秒</option>
+    </select>
+  </div>
   <div id="field">
     <div id="overlay" class="show">
       <h2 id="ovTitle">准备好了吗？</h2>
@@ -111,7 +129,16 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <script>
 (function(){
 "use strict";
-var GAME_TIME=30;
+/* 难度：地鼠出现频率(spawnMs) + 停留时长(upBase/upDrop)；时长可选 20/30/60 秒 */
+var DIFFS={
+  easy:{spawnMs:820, upBase:680, upDrop:200},
+  normal:{spawnMs:560, upBase:520, upDrop:280},
+  hard:{spawnMs:400, upBase:380, upDrop:240}
+};
+var diffKey=localStorage.getItem('xuxu_whack_diff')||'normal';
+if(!DIFFS[diffKey])diffKey='normal';
+var GAME_TIME=parseInt(localStorage.getItem('xuxu_whack_time')||'30',10);
+if([20,30,60].indexOf(GAME_TIME)<0)GAME_TIME=30;
 var field=document.getElementById('field');
 var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best'), timeEl=document.getElementById('time');
 var overlay=document.getElementById('overlay'), ovTitle=document.getElementById('ovTitle'), ovText=document.getElementById('ovText');
@@ -164,8 +191,10 @@ function spawn(){
   var h=free[Math.floor(Math.random()*free.length)];
   h.busy=true; h.done=false;
   h.mole.classList.add('up');
-  // 冒头停留时间随进度变短
-  var up=520-Math.floor((GAME_TIME-timeLeft)/GAME_TIME*280);
+  // 冒头停留时间随进度变短（幅度由难度决定）
+  var cfg=DIFFS[diffKey];
+  var up=cfg.upBase-Math.floor((GAME_TIME-timeLeft)/GAME_TIME*cfg.upDrop);
+  if(up<140)up=140;
   setTimeout(function(){
     h.mole.classList.remove('up');
     setTimeout(function(){h.busy=false;},150);
@@ -179,7 +208,7 @@ function start(){
   overlay.classList.remove('show');
   holes.forEach(function(h){h.mole.classList.remove('up');h.busy=false;});
   clearInterval(spawnTimer); clearInterval(countTimer);
-  spawnTimer=setInterval(spawn,560);
+  spawnTimer=setInterval(spawn,DIFFS[diffKey].spawnMs);
   countTimer=setInterval(function(){
     timeLeft--;
     timeEl.textContent=timeLeft;
@@ -201,6 +230,26 @@ function end(){
 
 document.getElementById('restart').addEventListener('click',start);
 document.getElementById('ovBtn').addEventListener('click',start);
+var selDiff=document.getElementById('selDiff');
+var selTime=document.getElementById('selTime');
+selDiff.value=diffKey;
+selTime.value=String(GAME_TIME);
+/* 未开局时改设置：更新开始界面文案与时间显示 */
+function refreshIntro(){
+  timeEl.textContent=GAME_TIME;
+  ovText.textContent='点击开始，'+GAME_TIME+' 秒内能敲中多少只地鼠？';
+}
+refreshIntro();
+selDiff.addEventListener('change',function(){
+  diffKey=this.value;
+  localStorage.setItem('xuxu_whack_diff',diffKey);
+  if(!playing)refreshIntro();
+});
+selTime.addEventListener('change',function(){
+  GAME_TIME=parseInt(this.value,10);
+  localStorage.setItem('xuxu_whack_time',String(GAME_TIME));
+  if(!playing){timeLeft=GAME_TIME;refreshIntro();}
+});
 })();
 </script>
 </body>

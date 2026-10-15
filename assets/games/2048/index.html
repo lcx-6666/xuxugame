@@ -55,6 +55,11 @@
   button.btn.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;box-shadow:0 3px 0 #1f7aa0;}
   button.btn.primary:active{box-shadow:0 1px 0 #1f7aa0;}
   button.btn.warn{background:#ffe38f;border-color:#eec85e;box-shadow:0 3px 0 #dbb54d;}
+  select.btn{
+    flex:1;min-width:88px;border:none;border-radius:999px;padding:10px 12px;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;letter-spacing:1px;text-align:center;appearance:none;-webkit-appearance:none;
+    background:#fff;color:var(--ink);border:2px solid var(--bubble);box-shadow:0 3px 0 #b3dcee;
+  }
   .tip{font-size:12px;color:var(--ink-soft);margin-bottom:12px;line-height:1.7;}
   .tip b{color:var(--accent-dark);}
   #boardWrap{position:relative;width:100%;}
@@ -72,7 +77,8 @@
     overflow:hidden;
     box-shadow:0 3px 0 rgba(0,0,0,.1);
   }
-  .tile .face{position:absolute;inset:0;background-size:cover;background-position:center 25%;}
+  /* 脸内缩 4px：让砖块的等级色露出来一圈，不同数字一眼可辨 */
+  .tile .face{position:absolute;inset:4px;border-radius:calc(var(--radius)*0.75);background-size:cover;background-position:center 25%;}
   .tile .num{
     position:absolute;left:50%;bottom:5%;transform:translateX(-50%);
     background:rgba(255,255,255,.85);backdrop-filter:blur(2px);
@@ -145,8 +151,13 @@
 
 <div class="toolbar">
   <button class="btn primary" id="btnNew">🫧 新开局</button>
-  <button class="btn warn" id="btnUndo">↩️ 悔棋</button>
-  <button class="btn" id="btnBack">🏠 大厅</button>
+<button class="btn warn" id="btnUndo">↩️ 悔棋</button>
+<select class="btn" id="selSize" title="棋盘大小">
+  <option value="4">▦ 4×4</option>
+  <option value="5">▦ 5×5</option>
+  <option value="6">▦ 6×6</option>
+</select>
+<button class="btn" id="btnBack">🏠 大厅</button>
 </div>
 
 <div class="tip" id="tip">方块会按数字出现嘘嘘主题表情；越高数字越稀有～</div>
@@ -173,7 +184,11 @@
 <script>
 (function(){
 "use strict";
-var N=4;
+/* 棋盘大小可选 4/5/6，各尺寸的存档和最佳分分开存（4×4 沿用老 key，保住旧纪录） */
+var N=parseInt(localStorage.getItem('xuxu2048_size')||'4',10);
+if([4,5,6].indexOf(N)<0)N=4;
+function stateKey(){return N===4?'xuxu2048_state':'xuxu2048_state_'+N;}
+function bestKey(){return N===4?'xuxu2048_best':'xuxu2048_best_'+N;}
 var board=document.getElementById('board');
 var overlay=document.getElementById('overlay');
 var scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
@@ -286,8 +301,11 @@ function renderTile(t){
     html+='<div class="face" style="background-image:url(\''+photo+'\')"></div>';
     if(crowned) html+='<div class="crown">👑</div>';
     html+='<span class="num">'+t.value+'</span>';
-    t.el.style.background='transparent';
-    t.el.style.border='3px solid '+ (lvOf(t.value)>=8?'#36b3e3':'#fff');
+    /* 等级色做砖底（从脸四周的 4px 缝里露出来），以前透明底+白边，低等级砖全一个样 */
+    t.el.style.background=tileBg(t.value);
+    t.el.style.border='none';
+    if(lv>=7) t.el.style.boxShadow='0 0 '+(cellSize*0.25)+'px rgba(54,179,227,.55)';
+    else t.el.style.boxShadow='0 3px 0 rgba(0,0,0,.1)';
   }else{
     var emoji=EMOJIS[Math.min(idx,EMOJIS.length-1)]||'👑';
     html+='<span class="plain" style="color:'+textColor(t.value)+'">'+emoji+'<br><span style="font-size:.55em">'+t.value+'</span></span>';
@@ -301,7 +319,7 @@ function renderTile(t){
 }
 
 function grid(){
-  var g=[];for(var r=0;r<N;r++){g.push([null,null,null,null]);}
+  var g=[];for(var r=0;r<N;r++){var row=[];for(var c=0;c<N;c++)row.push(null);g.push(row);}
   tiles.forEach(function(t){g[t.row][t.col]=t;});
   return g;
 }
@@ -337,7 +355,8 @@ function undo(){
 }
 var VECTORS={up:[-1,0],down:[1,0],left:[0,-1],right:[0,1]};
 function traversals(dir){
-  var rows=[0,1,2,3],cols=[0,1,2,3];
+  var rows=[],cols=[];
+  for(var i=0;i<N;i++){rows.push(i);cols.push(i);}
   if(dir==='down')rows.reverse();
   if(dir==='right')cols.reverse();
   return {rows:rows,cols:cols};
@@ -411,19 +430,19 @@ function movesAvailable(){
 
 function updateScore(bump){
   scoreEl.textContent=score;
-  if(score>best){best=score;localStorage.setItem('xuxu2048_best',best);}
+  if(score>best){best=score;localStorage.setItem(bestKey(),best);}
   bestEl.textContent=best;
   if(bump){scoreEl.classList.remove('bump');void scoreEl.offsetWidth;scoreEl.classList.add('bump');}
 }
 function save(){
-  localStorage.setItem('xuxu2048_state',JSON.stringify({
+  localStorage.setItem(stateKey(),JSON.stringify({
     tiles:tiles.map(function(t){return [t.value,t.row,t.col];}),
     score:score,won:won,keepPlaying:keepPlaying,over:over
   }));
 }
 function load(){
-  best=parseInt(localStorage.getItem('xuxu2048_best')||'0',10)||0;
-  var s=localStorage.getItem('xuxu2048_state');
+  best=parseInt(localStorage.getItem(bestKey())||'0',10)||0;
+  var s=localStorage.getItem(stateKey());
   if(!s)return false;
   try{
     var d=JSON.parse(s);
@@ -484,6 +503,15 @@ board.addEventListener('touchend',function(ev){
 });
 document.getElementById('btnNew').onclick=function(){if(confirm('重新开一局？当前进度会清空'))newGame();};
 document.getElementById('btnUndo').onclick=undo;
+var selSize=document.getElementById('selSize');
+selSize.value=String(N);
+selSize.onchange=function(){
+  /* 切尺寸前先把本局存盘，再刷新页面按新尺寸重建棋盘；
+     各尺寸存档独立，来回切换两边进度都在 */
+  save();
+  localStorage.setItem('xuxu2048_size',this.value);
+  location.reload();
+};
 document.getElementById('btnBack').onclick=function(){location.href='../../../index.html';};
 window.addEventListener('resize',layout);
 

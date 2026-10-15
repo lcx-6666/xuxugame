@@ -36,6 +36,12 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+.opts{display:flex;gap:10px;margin-bottom:14px}
+select.btn{
+  flex:1;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:10px 8px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #stage{
   position:relative;width:100%;aspect-ratio:1/1;
   background:var(--board);border-radius:18px;
@@ -84,6 +90,13 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
     <div class="stat"><div class="label">步数</div><div class="val" id="moves">20</div></div>
     <button class="btn" id="restart">重新开始</button>
   </div>
+  <div class="opts">
+    <select class="btn" id="selDiff" title="难度">
+      <option value="easy">🌱 简单（5种·30步）</option>
+      <option value="normal">🌿 普通（6种·20步）</option>
+      <option value="hard">🌵 困难（7种·15步）</option>
+    </select>
+  </div>
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="combo"></div>
@@ -101,7 +114,16 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 (function(){
 "use strict";
 var N=8;                     // 8x8 棋盘
-var MAX_MOVES=20;
+/* 难度：方块种类数越多越难配，步数越少容错越低 */
+var DIFFS={
+  easy:{kinds:5, moves:30},
+  normal:{kinds:6, moves:20},
+  hard:{kinds:7, moves:15}
+};
+var diffKey=localStorage.getItem('xuxu_xxl_diff')||'normal';
+if(!DIFFS[diffKey])diffKey='normal';
+var kindCount=DIFFS[diffKey].kinds;
+var MAX_MOVES=DIFFS[diffKey].moves;
 var KINDS=['💧','🫧','🌊','💦','🚿','🛁','🧼'];
 /* 原来 7 个底色全是蓝色系，靠 emoji 区分种类。
    换成嘘嘘照片后 emoji 没了、7 张又是同一个人的脸，只剩蓝描边根本分不清，
@@ -138,7 +160,7 @@ function init(){
     board.push([]);
     for(var c=0;c<N;c++){
       var k;
-      do{ k=rnd(KINDS.length); }while(causesMatch(r,c,k));
+      do{ k=rnd(kindCount); }while(causesMatch(r,c,k));
       board[r].push(k);
     }
   }
@@ -330,7 +352,7 @@ function applyGravity(){
     }
     // 补新块
     for(var r2=write;r2>=0;r2--){
-      board[r2][c]=rnd(KINDS.length);
+      board[r2][c]=rnd(kindCount);
       anim[r2][c].y=-(write+1-r2); // 从上方进入
     }
   }
@@ -420,6 +442,15 @@ window.addEventListener('pointerup',function(){ dragStart=null; });
 
 document.getElementById('restart').addEventListener('click',init);
 document.getElementById('ovBtn').addEventListener('click',init);
+var selDiff=document.getElementById('selDiff');
+selDiff.value=diffKey;
+selDiff.addEventListener('change',function(){
+  diffKey=this.value;
+  localStorage.setItem('xuxu_xxl_diff',diffKey);
+  kindCount=DIFFS[diffKey].kinds;
+  MAX_MOVES=DIFFS[diffKey].moves;
+  init(); // 新难度立刻开局
+});
 
 resize();
 init();

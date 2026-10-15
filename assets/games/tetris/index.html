@@ -45,6 +45,11 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+select.btn{
+  border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:9px 4px;cursor:pointer;width:100%;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #dpad{
   display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px;
 }
@@ -92,6 +97,11 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
       <div class="panel"><div class="label">最佳</div><div class="val" id="best">0</div></div>
       <div class="panel"><div class="label">消除行数</div><div class="val" id="lines">0</div></div>
       <div class="panel next"><div class="label">下一个</div><canvas id="next" width="80" height="80"></canvas></div>
+      <select class="btn" id="selSpeed" title="初始下落速度">
+        <option value="800">🐢 慢速</option>
+        <option value="600">🧱 普通</option>
+        <option value="400">🚀 快速</option>
+      </select>
       <button class="btn" id="pause">暂停</button>
       <button class="btn" id="restart">重开</button>
     </div>
@@ -134,6 +144,9 @@ var cell=0, dpr=1, W=0, H=0;
 var grid, cur, nxt, bag=[], score=0, lines=0, dropTimer=null, paused=false, over=false;
 var best=+(localStorage.getItem('xuxu_tetris_best')||0);
 bestEl.textContent=best;
+/* 初始下落速度可选 慢800/普通600/快400 ms 每格，选择持久化 */
+var baseInterval=parseInt(localStorage.getItem('xuxu_tetris_speed')||'600',10);
+if([800,600,400].indexOf(baseInterval)<0)baseInterval=600;
 
 function resize(){
   dpr=Math.min(window.devicePixelRatio||1,2);
@@ -167,7 +180,7 @@ function init(){
   cur=nextFromBag(); nxt=nextFromBag();
   drawNext();
   clearInterval(dropTimer);
-  dropTimer=setInterval(tick,600);
+  dropTimer=setInterval(tick,baseInterval);
   draw();
 }
 
@@ -358,6 +371,13 @@ function togglePause(){
   pauseBtn.textContent=paused?'继续':'暂停';
 }
 pauseBtn.addEventListener('click',togglePause);
+var selSpeed=document.getElementById('selSpeed');
+selSpeed.value=String(baseInterval);
+selSpeed.addEventListener('change',function(){
+  baseInterval=parseInt(this.value,10);
+  localStorage.setItem('xuxu_tetris_speed',String(baseInterval));
+  if(!paused&&!over){clearInterval(dropTimer);dropTimer=setInterval(tick,baseInterval);} // 当前局立即生效
+});
 document.getElementById('restart').addEventListener('click',init);
 document.getElementById('ovBtn').addEventListener('click',init);
 

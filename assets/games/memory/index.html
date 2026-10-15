@@ -36,6 +36,11 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+select.btn{
+  border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:9px 8px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #board{
   display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
   perspective:1000px;
@@ -103,6 +108,11 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
     <div class="stat"><div class="label">步数</div><div class="val" id="moves">0</div></div>
     <div class="stat"><div class="label">配对</div><div class="val" id="pairs">0/8</div></div>
     <div class="stat"><div class="label">最佳</div><div class="val" id="best">--</div></div>
+    <select class="btn ghost" id="selPairs" title="牌数">
+      <option value="8">🃏 8 对</option>
+      <option value="10">🃏 10 对</option>
+      <option value="12">🃏 12 对</option>
+    </select>
     <button class="btn" id="restart">重开</button>
   </div>
   <div id="board"></div>
@@ -118,35 +128,43 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <script>
 (function(){
 "use strict";
-var EMOJIS=['💧','🫧','🌊','💦','🚿','🛁','🧼','🐳'];
-var FACES=[0,1,2,3,4,5,6,7];  // 8 种牌面用 8 张不同的嘘嘘照片编号，同一对牌复用同一张
-var KIND_COLORS=['#ef5350','#ffa726','#fdd835','#43a047','#1e88e5','#8e24aa','#00acc1','#6d4c41'];
+/* 12 种牌面：照片只有 11 张，第 12 种复用第 1 张——配对按种类号判定，
+   角标 emoji 和异色外圈都不一样，不会混淆 */
+var EMOJIS=['💧','🫧','🌊','💦','🚿','🛁','🧼','🐳','🐠','🐬','🦄','🌈'];
+var KIND_COLORS=['#ef5350','#ffa726','#fdd835','#43a047','#1e88e5','#8e24aa','#00acc1','#6d4c41','#ec407a','#7cb342','#5c6bc0','#546e7a'];
+var pairCount=parseInt(localStorage.getItem('xuxu_memory_pairs')||'8',10);
+if([8,10,12].indexOf(pairCount)<0)pairCount=8;
+function bestKey(){return pairCount===8?'xuxu_memory_best':'xuxu_memory_best_'+pairCount;}
 var boardEl=document.getElementById('board');
 var movesEl=document.getElementById('moves'), pairsEl=document.getElementById('pairs'), bestEl=document.getElementById('best');
 var overlay=document.getElementById('overlay'), ovText=document.getElementById('ovText');
 
 var first=null, lock=false, moves=0, pairs=0, matched=0;
 var gen=0; // 局数代记号：胜利弹窗延迟 500ms，期间点了重开就不要再弹旧窗
-var best=localStorage.getItem('xuxu_memory_best');
+var best=localStorage.getItem(bestKey());
 if(best)bestEl.textContent=best;
 
 function init(){
   gen++;
   first=null; lock=false; moves=0; pairs=0; matched=0;
-  movesEl.textContent=0; pairsEl.textContent='0/8';
+  movesEl.textContent=0; pairsEl.textContent='0/'+pairCount;
   overlay.classList.remove('show');
+  bestEl.textContent=localStorage.getItem(bestKey())||'--';
   var faces=!!(window.XUXU&&XUXU.COUNT>=8);   // 照片工具没加载成功就用表情牌，游戏照常能玩
-  var kinds=faces?FACES:EMOJIS;
+  var kinds=[];
+  for(var k=0;k<pairCount;k++)kinds.push(k);
   var deck=kinds.concat(kinds);
   for(var i=deck.length-1;i>0;i--){
     var j=Math.floor(Math.random()*(i+1));
     var t=deck[i];deck[i]=deck[j];deck[j]=t;
   }
   boardEl.innerHTML='';
+  var cols=pairCount===8?4:(pairCount===10?5:6); // 牌数变了列数跟着变，永远 4 行
+  boardEl.style.gridTemplateColumns='repeat('+cols+',1fr)';
   deck.forEach(function(e){
     var c=document.createElement('div');
     c.className='card';
-    c.innerHTML='<div class="face front">🫧</div><div class="face back">'+(faces?'<img class="pic" alt="嘘嘘" src="'+XUXU.url(+e)+'"><span class="tag">'+EMOJIS[e]+'</span>':e)+'</div>';
+    c.innerHTML='<div class="face front">🫧</div><div class="face back">'+(faces?'<img class="pic" alt="嘘嘘" src="'+XUXU.url(e%XUXU.COUNT)+'"><span class="tag">'+EMOJIS[e]+'</span>':EMOJIS[e])+'</div>';
     c.dataset.e=e;
     c.addEventListener('click',function(){flip(c);});
     if(faces){
@@ -169,8 +187,8 @@ function flip(c){
     c.classList.add('done');
     first=null;
     matched++;
-    pairsEl.textContent=matched+'/8';
-    if(matched===8)win();
+    pairsEl.textContent=matched+'/'+pairCount;
+    if(matched===pairCount)win();
   }else{
     lock=true;
     var a=first; first=null;
@@ -183,9 +201,9 @@ function flip(c){
 }
 
 function win(){
-  var saved=+(localStorage.getItem('xuxu_memory_best')||999);
+  var saved=+(localStorage.getItem(bestKey())||999);
   if(moves<saved){
-    localStorage.setItem('xuxu_memory_best',moves);
+    localStorage.setItem(bestKey(),moves);
     bestEl.textContent=moves;
     ovText.textContent='用了 '+moves+' 步，刷新最佳纪录！';
   }else{
@@ -197,6 +215,13 @@ function win(){
 
 document.getElementById('restart').addEventListener('click',init);
 document.getElementById('ovBtn').addEventListener('click',init);
+var selPairs=document.getElementById('selPairs');
+selPairs.value=String(pairCount);
+selPairs.addEventListener('change',function(){
+  pairCount=parseInt(this.value,10);
+  localStorage.setItem('xuxu_memory_pairs',String(pairCount));
+  init();
+});
 
 init();
 })();

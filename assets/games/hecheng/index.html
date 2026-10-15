@@ -382,8 +382,13 @@ function drawBall(x, y, r, level, angle, isPreview){
     var sx=(img.width-side)/2, sy=Math.max(0,(img.height-side)*0.15);
     ctx.drawImage(img, sx, sy, side, side, -r, -r, r*2, r*2);
     ctx.restore();
-    ctx.lineWidth=3;
-    ctx.strokeStyle=level>=6?'#36b3e3':'#fff';
+    /* 等级色粗描边：以前统一白边，球全一个样；现在每级一圈自己的颜色，
+       外加一条细深色轮廓保证浅色系球（💧🫧）在亮背景上也有边 */
+    ctx.lineWidth=Math.max(5,r*0.14);
+    ctx.strokeStyle=lv.color;
+    ctx.stroke();
+    ctx.lineWidth=1.5;
+    ctx.strokeStyle='rgba(44,74,90,.28)';
     ctx.stroke();
   }else{
     ctx.fillStyle=lv.color;

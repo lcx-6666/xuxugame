@@ -38,6 +38,10 @@ button.btn{
 button.btn:active{background:var(--accent-dark)}
 button.btn.ghost{background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15)}
 button.btn.ghost.active{background:var(--accent-dark);color:#fff}
+select.btn{
+  border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:9px 10px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+}
 #stage{
   position:relative;width:100%;
   background:#a8cce0;border-radius:18px;
@@ -90,6 +94,11 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
     <div class="stat"><div class="label">剩余雷数</div><div class="val" id="mines">10</div></div>
     <div class="stat"><div class="label">用时(秒)</div><div class="val" id="time">0</div></div>
     <button class="btn ghost" id="flagMode">🚩 插旗</button>
+    <select class="btn ghost" id="selDiff" title="难度">
+      <option value="easy">🌱 简单 9×9</option>
+      <option value="normal">🌿 普通 12×12</option>
+      <option value="hard">🌵 困难 15×15</option>
+    </select>
     <button class="btn" id="restart">新开局</button>
   </div>
   <div id="stage">
@@ -107,7 +116,13 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <script>
 (function(){
 "use strict";
-var LEVEL={cols:9,rows:9,mines:10}; // 入门 9x9，手机友好
+var LEVELS={
+  easy:{cols:9,rows:9,mines:10},
+  normal:{cols:12,rows:12,mines:24},
+  hard:{cols:15,rows:15,mines:40}
+};
+var diffKey=localStorage.getItem('xuxu_saolei_diff')||'easy';
+var LEVEL=LEVELS[diffKey]||LEVELS.easy;
 var gridEl=document.getElementById('grid');
 var minesEl=document.getElementById('mines'), timeEl=document.getElementById('time');
 var overlay=document.getElementById('overlay'), ovTitle=document.getElementById('ovTitle'), ovText=document.getElementById('ovText');
@@ -233,6 +248,14 @@ function checkWin(){
 flagBtn.addEventListener('click',function(){
   flagMode=!flagMode;
   flagBtn.classList.toggle('active',flagMode);
+});
+var selDiff=document.getElementById('selDiff');
+selDiff.value=diffKey;
+selDiff.addEventListener('change',function(){
+  diffKey=this.value;
+  LEVEL=LEVELS[diffKey];
+  localStorage.setItem('xuxu_saolei_diff',diffKey);
+  init();
 });
 document.getElementById('restart').addEventListener('click',init);
 document.getElementById('ovBtn').addEventListener('click',init);

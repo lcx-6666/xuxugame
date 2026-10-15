@@ -36,6 +36,12 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+button.btn.ghost{background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15)}
+select.btn{
+  border:none;border-radius:var(--radius);font-size:15px;font-weight:700;padding:10px 8px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #stage{
   position:relative;width:100%;
   background:var(--board);border-radius:18px;
@@ -86,7 +92,13 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
   <div class="toolbar">
     <div class="stat"><div class="label">得分</div><div class="val" id="score">0</div></div>
     <div class="stat"><div class="label">最佳</div><div class="val" id="best">0</div></div>
-    <button class="btn" id="restart">重新开始</button>
+    <select class="btn" id="selSpeed" title="初始速度">
+  <option value="180">🐢 慢速</option>
+  <option value="140">🐍 中速</option>
+  <option value="100">🚀 快速</option>
+</select>
+<button class="btn ghost" id="btnWrap">🌀 穿墙：关</button>
+<button class="btn" id="restart">重新开始</button>
   </div>
   <div id="stage">
     <canvas id="cv"></canvas>
@@ -110,8 +122,14 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 (function(){
 "use strict";
 var N=17;                 // 17x17 格
-var TICK=140;             // ms 每步
+/* 初始速度可选 慢180/中140/快100 ms 每步；穿墙开启后撞墙从另一侧钻出 */
+var baseTick=parseInt(localStorage.getItem('xuxu_snake_speed')||'140',10);
+if([180,140,100].indexOf(baseTick)<0)baseTick=140;
+var wrapWalls=localStorage.getItem('xuxu_snake_wrap')==='1';
+var TICK=baseTick;
 var FOODS=['💧','🫧','🚿','🧼','💦'];
+/* 每种食物一个专属色环：5 张照片是同一个人，光看脸分不清种类 */
+var FOOD_COLORS=['#2f9be8','#36c9c6','#f5993d','#9b7ede','#f2608a'];
 
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 var stage=document.getElementById('stage');
@@ -147,7 +165,7 @@ function spawnFood(){
 
 function init(){
   clearInterval(timer);
-  TICK=140;              // 吃食物会加速，重开必须重置回初始速度
+  TICK=baseTick;         // 吃食物会加速，重开必须重置回初始速度
   snake=[{r:8,c:8},{r:8,c:7},{r:8,c:6}];
   dir={r:0,c:1}; nextDir=dir;
   score=0; dead=false;
@@ -166,8 +184,11 @@ function setDir(r,c){
 function step(){
   dir=nextDir;
   var head={r:snake[0].r+dir.r,c:snake[0].c+dir.c};
-  if(head.r<0||head.r>=N||head.c<0||head.c>=N||
-     snake.some(function(s,i){return i<snake.length-1&&s.r===head.r&&s.c===head.c;})){
+  if(head.r<0||head.r>=N||head.c<0||head.c>=N){
+    if(wrapWalls){head.r=(head.r+N)%N;head.c=(head.c+N)%N;}
+    else{end(false); return;}
+  }
+  if(snake.some(function(s,i){return i<snake.length-1&&s.r===head.r&&s.c===head.c;})){
     end(false); return;
   }
   snake.unshift(head);
@@ -178,7 +199,7 @@ function step(){
     spawnFood();
     // 提速一点
     clearInterval(timer);
-    TICK=Math.max(80,TICK-1.5);
+    TICK=Math.max(60,TICK-1.5);
     timer=setInterval(step,TICK);
   }else{
     snake.pop();
@@ -204,7 +225,7 @@ function draw(){
   if(food){
     var fx=food.c*cell+cell/2, fy=food.r*cell+cell/2;
     var fi=FOODS.indexOf(food.k); if(fi<0)fi=0;
-    var fd=window.XUXU && XUXU.drawFace(ctx,fx,fy,cell*0.44,fi,{ring:'#fff',ringWidth:0.1});
+    var fd=window.XUXU && XUXU.drawFace(ctx,fx,fy,cell*0.44,fi,{ring:FOOD_COLORS[fi],ringWidth:0.16});
     if(!fd){
       ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.font=Math.round(cell*0.72)+'px serif';
@@ -263,6 +284,21 @@ cv.addEventListener('pointerup',function(e){
 
 document.getElementById('restart').addEventListener('click',init);
 document.getElementById('ovBtn').addEventListener('click',init);
+var selSpeed=document.getElementById('selSpeed');
+selSpeed.value=String(baseTick);
+selSpeed.addEventListener('change',function(){
+  baseTick=parseInt(this.value,10);
+  localStorage.setItem('xuxu_snake_speed',String(baseTick));
+  init(); // 速度从下一局开始生效
+});
+var btnWrap=document.getElementById('btnWrap');
+function paintWrap(){btnWrap.textContent='🌀 穿墙：'+(wrapWalls?'开':'关');}
+paintWrap();
+btnWrap.addEventListener('click',function(){
+  wrapWalls=!wrapWalls;
+  localStorage.setItem('xuxu_snake_wrap',wrapWalls?'1':'0');
+  paintWrap();
+});
 
 resize();
 init();

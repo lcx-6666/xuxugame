@@ -37,6 +37,12 @@ button.btn{
   box-shadow:0 3px 10px rgba(54,179,227,.35);
 }
 button.btn:active{background:var(--accent-dark)}
+.opts{display:flex;gap:10px;margin-bottom:14px}
+select.btn{
+  flex:1;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;padding:9px 8px;cursor:pointer;
+  font-family:inherit;appearance:none;-webkit-appearance:none;text-align:center;
+  background:#fff;color:var(--accent-dark);box-shadow:0 2px 8px rgba(44,116,150,.15);
+}
 #stage{
   position:relative;width:100%;
   background:linear-gradient(180deg,#bfe4f5 0%,var(--board) 100%);
@@ -69,6 +75,13 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
     <div class="stat"><div class="label">最佳</div><div class="val" id="best">0</div></div>
     <button class="btn" id="restart">重开</button>
   </div>
+  <div class="opts">
+    <select class="btn" id="selDiff" title="难度">
+      <option value="easy">🌱 简单（墩大·间隔近）</option>
+      <option value="normal">🌿 普通</option>
+      <option value="hard">🌵 困难（墩小·间隔远）</option>
+    </select>
+  </div>
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="overlay" class="show">
@@ -92,6 +105,14 @@ var overlay=document.getElementById('overlay'), ovBtn=document.getElementById('o
 var W=0,H=0,dpr=1;
 var best=+(localStorage.getItem('xuxu_jump_best')||0);
 bestEl.textContent=best;
+/* 难度：墩子越小、间隔越远、落点容差越小越难 */
+var DIFFS={
+  easy:{distMin:80, distRange:50, sizeMin:52, sizeRange:20, tol:0.78, perf:0.24},
+  normal:{distMin:95, distRange:75, sizeMin:40, sizeRange:24, tol:0.62, perf:0.18},
+  hard:{distMin:110, distRange:95, sizeMin:32, sizeRange:16, tol:0.5, perf:0.13}
+};
+var diffKey=localStorage.getItem('xuxu_jump_diff')||'normal';
+if(!DIFFS[diffKey])diffKey='normal';
 
 // 等轴视角
 var PLAYER_EMO='🫧';
@@ -114,7 +135,7 @@ function init(){
   jumping=false; charging=false; chargeT=0;
   scoreEl.textContent=0;
   overlay.classList.remove('show');
-  blocks=[makeBlock(0,0,56,true), makeBlock(130,0,52)];
+  blocks=[makeBlock(0,0,56,true), makeBlock(130,0,DIFFS[diffKey].sizeMin+12)];
   blocks[0].prevCenter=true;
   player={bx:0,by:0,sx:0,sy:0,tx:0,ty:0,jumpT:1};
   spawnNext();
@@ -123,9 +144,10 @@ function init(){
 
 function spawnNext(){
   var prev=blocks[blocks.length-1];
+  var cfg=DIFFS[diffKey];
   var dir=Math.random()<0.5?'x':'y';
-  var dist=95+Math.random()*75;
-  var size=40+Math.random()*24;
+  var dist=cfg.distMin+Math.random()*cfg.distRange;
+  var size=cfg.sizeMin+Math.random()*cfg.sizeRange;
   var nx=prev.x+(dir==='x'?dist:0);
   var ny=prev.y+(dir==='y'?dist:0);
   blocks.push(makeBlock(nx,ny,size));
@@ -161,12 +183,13 @@ function land(){
   var target=blocks.find(function(b){return !b.prevCenter;});
   var prev=blocks.find(function(b){return b.prevCenter;});
   var d=Math.sqrt(Math.pow(player.tx-target.x,2)+Math.pow(player.ty-target.y,2));
-  if(d>target.s*0.62){
+  var cfg=DIFFS[diffKey];
+  if(d>target.s*cfg.tol){
     // 跳空
     die();
     return;
   }
-  var perfect=d<target.s*0.18;
+  var perfect=d<target.s*cfg.perf;
   if(perfect){
     combo++;
     score+=2*combo;
@@ -322,6 +345,13 @@ window.addEventListener('pointercancel',function(){ charging=false; chargeT=0; }
 
 ovBtn.addEventListener('click',init);
 document.getElementById('restart').addEventListener('click',init);
+var selDiff=document.getElementById('selDiff');
+selDiff.value=diffKey;
+selDiff.addEventListener('change',function(){
+  diffKey=this.value;
+  localStorage.setItem('xuxu_jump_diff',diffKey);
+  init(); // 新难度立刻开一局
+});
 
 resize();
 requestAnimationFrame(loop);
