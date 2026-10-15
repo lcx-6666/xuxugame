@@ -80,7 +80,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>贪吃蛇</span></h1>
   </header>
   <div class="toolbar">
@@ -147,6 +147,7 @@ function spawnFood(){
 
 function init(){
   clearInterval(timer);
+  TICK=140;              // 吃食物会加速，重开必须重置回初始速度
   snake=[{r:8,c:8},{r:8,c:7},{r:8,c:6}];
   dir={r:0,c:1}; nextDir=dir;
   score=0; dead=false;

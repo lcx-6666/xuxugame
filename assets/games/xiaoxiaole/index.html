@@ -75,7 +75,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>消消乐</span></h1>
   </header>
   <div class="toolbar">
@@ -103,7 +103,10 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 var N=8;                     // 8x8 棋盘
 var MAX_MOVES=20;
 var KINDS=['💧','🫧','🌊','💦','🚿','🛁','🧼'];
-var COLORS=['#4fc3f7','#7ed6f2','#36b3e3','#8fd3f4','#5ab8e8','#a5ddf5','#2f9fc9'];
+/* 原来 7 个底色全是蓝色系，靠 emoji 区分种类。
+   换成嘘嘘照片后 emoji 没了、7 张又是同一个人的脸，只剩蓝描边根本分不清，
+   所以这里改成 7 个差异明显的色相，让颜色重新承担区分职责。 */
+var COLORS=['#ef5350','#ffa726','#fdd835','#43a047','#1e88e5','#8e24aa','#6d4c41'];
 
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 var stage=document.getElementById('stage');
@@ -121,10 +124,12 @@ bestEl.textContent=best;
 var anim=[];   // 每格 { y: 偏移比例, pop: 0..1 消失进度 }
 var popSet=[]; // 待消除的格子 [{r,c}]
 var fallT=0, phase='idle'; // idle | pop | fall
+var gen=0; // 局数代记号：连锁动画是 rAF 驱动的，重开后在飞的旧回调必须作废，否则会把新棋盘的格子消掉
 
 function rnd(k){ return Math.floor(Math.random()*k); }
 
 function init(){
+  gen++;
   score=0; moves=MAX_MOVES; sel=null; busy=false; phase='idle'; popSet=[];
   scoreEl.textContent=0; movesEl.textContent=moves;
   overlay.classList.remove('show');
@@ -257,15 +262,24 @@ function draw(){
     var sz=cell*0.62*a.scale;
     ctx.save();
     ctx.globalAlpha=a.scale;
-    // 气泡底
+    // 气泡底（彩环加厚：颜色是不用细看就能分辨种类的快速线索）
     ctx.beginPath();
-    ctx.arc(x,y,sz/2+3,0,Math.PI*2);
+    ctx.arc(x,y,sz/2+Math.max(4,sz*0.16),0,Math.PI*2);
     ctx.fillStyle=COLORS[k%COLORS.length];
     ctx.fill();
     // 表情：每种糖果=一张固定照片，照片没加载好就退回原 emoji
     var drawn=false;
     if(window.XUXU){ drawn=XUXU.drawFace(ctx,x,y,sz*0.5,k,{ring:COLORS[k%COLORS.length],ringWidth:0.12}); }
-    if(!drawn){
+    if(drawn){
+      // 7 张脸是同一个人，光看脸分不清种类：右上角补一个原 emoji 角标做双重区分
+      var bx=x+sz*0.30, by=y-sz*0.30, br=Math.max(4,sz*0.27);
+      ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.strokeStyle=COLORS[k%COLORS.length]; ctx.lineWidth=Math.max(1,br*0.28); ctx.stroke();
+      ctx.fillStyle='#2c4a5a';
+      ctx.font=Math.round(br*1.3)+'px serif';
+      ctx.fillText(KINDS[k],bx,by+br*0.06);
+    }else{
       ctx.font=Math.round(sz*0.82)+'px serif';
       ctx.fillText(KINDS[k],x,y+sz*0.04);
     }
@@ -284,8 +298,10 @@ function doPop(matches){
   if(score>best){ best=score; localStorage.setItem('xuxu_xiaoxiaole_best',best); bestEl.textContent=best; }
   if(combo>3){ comboEl.textContent='连消 '+combo+' 个！+'+gain; comboEl.classList.add('show'); setTimeout(function(){comboEl.classList.remove('show');},700); }
   matches.forEach(function(m){ anim[m.r][m.c].scale=1; });
+  var g=gen;
   var t0=performance.now();
   function step(t){
+    if(g!==gen)return;   // 已重开，旧连锁作废
     var p=Math.min((t-t0)/220,1);
     matches.forEach(function(m){ anim[m.r][m.c].scale=1-p; });
     draw();
@@ -319,10 +335,13 @@ function applyGravity(){
     }
   }
   fallT=performance.now();
+  fallGen=gen;
   requestAnimationFrame(fallStep);
 }
 
+var fallGen=0;
 function fallStep(t){
+  if(fallGen!==gen)return;   // 已重开，旧下落动画作废
   var p=Math.min((t-fallT)/240,1);
   var e=1-Math.pow(1-p,3); // easeOutCubic
   for(var r=0;r<N;r++)for(var c=0;c<N;c++){

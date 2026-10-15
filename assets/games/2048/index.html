@@ -166,7 +166,7 @@
 </div>
 
 <footer>
-  方向键 / WASD / 滑动屏幕操作 · <a href="../../">🏠 返回嘘嘘游戏大厅</a><br>
+  方向键 / WASD / 滑动屏幕操作 · <a href="../../index.html">🏠 返回嘘嘘游戏大厅</a><br>
   灵感来自 <a href="https://milkyfrog.com/games" target="_blank" rel="noopener">milkyfrog.com</a> 奶蛙游戏宇宙
 </footer>
 
@@ -233,6 +233,7 @@ var tiles=[];
 var nextId=1;
 var score=0, best=0, won=false, over=false, keepPlaying=false;
 var undoStack=[];
+var animating=false;   // 合并动画 110ms 内锁输入，否则快速连打会把棋盘状态搞乱
 var cellSize=0, gap=10, pad=10;
 
 function layout(){
@@ -322,9 +323,8 @@ function spawn(){
 function snapshot(){
   return JSON.stringify({tiles:tiles.map(function(t){return [t.value,t.row,t.col];}),score:score,won:won});
 }
-function pushUndo(){ undoStack.push(snapshot()); if(undoStack.length>30)undoStack.shift(); }
 function undo(){
-  if(!undoStack.length)return;
+  if(!undoStack.length||animating)return;
   var s=JSON.parse(undoStack.pop());
   tiles.forEach(function(t){t.el.remove();});
   tiles=[];over=false;
@@ -333,7 +333,7 @@ function undo(){
     var t={id:nextId++,value:a[0],row:a[1],col:a[2],el:document.createElement('div')};
     t.el.className='tile';board.appendChild(t.el);tiles.push(t);place(t);renderTile(t);
   });
-  score=s.score;won=s.won;updateScore(false);
+  score=s.score;won=s.won;updateScore(false);save();
 }
 var VECTORS={up:[-1,0],down:[1,0],left:[0,-1],right:[0,1]};
 function traversals(dir){
@@ -343,8 +343,9 @@ function traversals(dir){
   return {rows:rows,cols:cols};
 }
 function move(dir){
-  if(over||overlayShown)return;
+  if(over||overlayShown||animating)return;
   var v=VECTORS[dir],tr=traversals(dir),g=grid();
+  var snap=snapshot();   // 必须在滑动改写 row/col 之前拍快照，悔棋才能回到本步之前
   var moved=false, gained=0;
   var mergedSurvivor=[], dying=[];
   tr.rows.forEach(function(r){
@@ -374,7 +375,8 @@ function move(dir){
     });
   });
   if(!moved)return;
-  pushUndo();
+  undoStack.push(snap); if(undoStack.length>30)undoStack.shift();
+  animating=true;
   tiles.forEach(function(t){ if(t.__merged)delete t.__merged; });
   tiles.forEach(place);
   setTimeout(function(){
@@ -393,6 +395,7 @@ function move(dir){
     if(!keepPlaying && tiles.some(function(t){return t.value>=2048;})){won=true;showOverlay('win');}
     else if(!movesAvailable()){over=true;showOverlay('over');}
     save();
+    animating=false;
   },110);
 }
 function movesAvailable(){
@@ -481,7 +484,7 @@ board.addEventListener('touchend',function(ev){
 });
 document.getElementById('btnNew').onclick=function(){if(confirm('重新开一局？当前进度会清空'))newGame();};
 document.getElementById('btnUndo').onclick=undo;
-document.getElementById('btnBack').onclick=function(){location.href='../../';};
+document.getElementById('btnBack').onclick=function(){location.href='../../index.html';};
 window.addEventListener('resize',layout);
 
 layout();

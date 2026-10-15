@@ -88,7 +88,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>打地鼠</span></h1>
   </header>
   <div class="toolbar">
@@ -117,6 +117,7 @@ var scoreEl=document.getElementById('score'), bestEl=document.getElementById('be
 var overlay=document.getElementById('overlay'), ovTitle=document.getElementById('ovTitle'), ovText=document.getElementById('ovText');
 
 var score=0, playing=false, timeLeft=GAME_TIME, spawnTimer=null, countTimer=null;
+var gen=0; // 局数代记号：结束弹窗延迟 400ms，期间点了重开就不要再弹旧窗
 var best=+(localStorage.getItem('xuxu_whack_best')||0);
 bestEl.textContent=best;
 var holes=[];
@@ -172,6 +173,7 @@ function spawn(){
 }
 
 function start(){
+  gen++;
   score=0; timeLeft=GAME_TIME; playing=true;
   scoreEl.textContent=0; timeEl.textContent=timeLeft;
   overlay.classList.remove('show');
@@ -193,7 +195,8 @@ function end(){
   if(score>best){best=score;localStorage.setItem('xuxu_whack_best',best);bestEl.textContent=best;isNew=true;}
   ovTitle.textContent=isNew?'新纪录！🎉':'时间到！';
   ovText.textContent='敲中 '+(score/10)+' 只地鼠，得分 '+score+' · 最佳 '+best;
-  setTimeout(function(){overlay.classList.add('show');},400);
+  var g=gen;
+  setTimeout(function(){ if(g===gen) overlay.classList.add('show'); },400);
 }
 
 document.getElementById('restart').addEventListener('click',start);

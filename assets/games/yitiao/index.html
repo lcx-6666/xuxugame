@@ -61,7 +61,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>一跳</span></h1>
   </header>
   <div class="toolbar">
@@ -109,6 +109,9 @@ function makeBlock(x,y,size,first){
 
 function init(){
   score=0; combo=0; dead=false; playing=true;
+  /* 跳跃/蓄力中点重开：旧状态不清掉的话，新 player 没有 sx/tx，
+     update 里插值出 NaN，角色直接消失 */
+  jumping=false; charging=false; chargeT=0;
   scoreEl.textContent=0;
   overlay.classList.remove('show');
   blocks=[makeBlock(0,0,56,true), makeBlock(130,0,52)];
@@ -146,6 +149,9 @@ function jump(){
   player.tx=prev.x+dx*Math.min(ratio,1.25);
   player.ty=prev.y+dy*Math.min(ratio,1.25);
   player.jumpT=0;
+  /* 跳跃弧高系数在这里存好：draw() 里用到的 chargeT 已被清零，
+     以前不管蓄力多久弧高都是最低档 */
+  player.hopK=0.5+Math.min(power,1700)/1000;
   jumping=true;
   chargeT=0;
 }
@@ -185,6 +191,7 @@ function land(){
 function die(){
   playing=false; dead=true;
   setTimeout(function(){
+    if(!dead)return;   // 600ms 内点了重开，就别再弹旧结算窗盖住新局
     overlay.querySelector('h2').textContent='跳空啦 💦';
     overlay.querySelector('p').textContent='本局得分 '+score+' · 最佳 '+best;
     ovBtn.textContent='再来一局';
@@ -255,7 +262,7 @@ function draw(){
     fx=player.bx; fy=player.by;
   }
   var sp=screenPos(fx,fy);
-  var hop=jumping?Math.sin(Math.min(player.jumpT,1)*Math.PI)*46*(0.5+chargeT/1000):0;
+  var hop=jumping?Math.sin(Math.min(player.jumpT,1)*Math.PI)*46*(player.hopK||0.5):0;
   var topBlock=blocks.find(function(b){return !b.prevCenter;});
   var prevB=blocks.find(function(b){return b.prevCenter;});
   var standH=(prevB?prevB.s:50)*0.55;
@@ -309,6 +316,9 @@ function pressEnd(e){
 }
 cv.addEventListener('pointerdown',pressStart);
 window.addEventListener('pointerup',pressEnd);
+/* 手机上滑动手势被系统抢走会触发 pointercancel，此时没有 pointerup，
+   蓄力状态会永远卡住——当作取消蓄力（不跳） */
+window.addEventListener('pointercancel',function(){ charging=false; chargeT=0; });
 
 ovBtn.addEventListener('click',init);
 document.getElementById('restart').addEventListener('click',init);

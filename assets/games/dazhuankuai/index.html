@@ -63,7 +63,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>打砖块</span></h1>
   </header>
   <div class="toolbar">
@@ -121,7 +121,9 @@ function buildPaddle(){
 function buildBricks(){
   bricks=[];
   var rows=Math.min(BRICK_ROWS+level-1,7);
-  var bw=(W-10)/COLS, bh=18;
+  /* 砖高 18→22：原来脸区高仅 12px，照片糊成色条（同俄罗斯方块的 MIN_FACE 原则）。
+     加高后脸区 16px 起步，轮廓能看了；球场空间仍绰绰有余 */
+  var bw=(W-10)/COLS, bh=22;
   for(var r=0;r<rows;r++)for(var c=0;c<COLS;c++){
     if(level>1&&Math.random()<0.12)continue; // 高关卡随机缺块
     bricks.push({x:5+c*bw,y:50+r*(bh+4),w:bw-4,h:bh,k:r%COLORS.length,alive:true});
@@ -215,6 +217,7 @@ function loop(){
 }
 
 function draw(){
+  if(!paddle||!ball)return;   // 页面未布局完成（宽为 0）时还没有可画的对象
   ctx.clearRect(0,0,W,H);
   // 砖块
   bricks.forEach(function(b){
@@ -232,8 +235,9 @@ function draw(){
     ctx.fillRect(b.x+3,b.y+2,b.w-6,4);
     // 脸贴砖块内部，四周留原色边框（弹板/小球/❤️生命保持原样）
     if(window.XUXU){
-      var inset=3;
-      XUXU.drawFaceRound(ctx,b.x+inset,b.y+inset,b.w-inset*2,b.h-inset*2,b.k,4);
+      var inset=3, fw=b.w-inset*2, fh=b.h-inset*2;
+      // 脸区小于 14px 就不贴脸：糊成色块反而看不清砖块边界
+      if(fw>=14&&fh>=14) XUXU.drawFaceRound(ctx,b.x+inset,b.y+inset,fw,fh,b.k,4);
     }
   });
   // 弹板
@@ -261,6 +265,7 @@ function draw(){
 
 // 输入
 function setPaddle(clientX){
+  if(!paddle)return;
   var rect=cv.getBoundingClientRect();
   var x=(clientX-rect.left)*(W/rect.width);
   paddle.x=Math.min(Math.max(x-paddle.w/2,0),W-paddle.w);
@@ -272,6 +277,7 @@ cv.addEventListener('pointerdown',function(e){
   if(running&&stuck)launch();
 });
 window.addEventListener('keydown',function(e){
+  if(!paddle)return;   // 页面还没布局完成（宽为 0）时弹板不存在
   if(e.key==='ArrowLeft'){paddle.x=Math.max(paddle.x-24,0);}
   else if(e.key==='ArrowRight'){paddle.x=Math.min(paddle.x+24,W-paddle.w);}
   else if(e.key===' '&&running&&stuck){launch();e.preventDefault();}

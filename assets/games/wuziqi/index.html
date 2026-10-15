@@ -122,7 +122,7 @@
 </div>
 
 <footer>
-  点击棋盘落子 · <a href="../../">🏠 返回嘘嘘游戏大厅</a><br>
+  点击棋盘落子 · <a href="../../index.html">🏠 返回嘘嘘游戏大厅</a><br>
   灵感来自 <a href="https://milkyfrog.com/games" target="_blank" rel="noopener">milkyfrog.com</a> 奶蛙游戏宇宙
 </footer>
 
@@ -142,17 +142,23 @@ var board=[]; // 0 empty, 1 black(human), 2 white(AI)
 var history=[];
 var current=1; // black first
 var over=false, locked=false;
+var gen=0; // 局数代记号：AI 延迟落子若来自上一局，直接丢弃
 
 function resize(){
   var rect=wrap.getBoundingClientRect();
   W=Math.floor(rect.width);
-  canvas.width=W; canvas.height=W;
+  /* 以前画布没按 dpr 放大，手机（dpr 2~3）上棋子/棋盘线全是虚的 */
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=W*dpr; canvas.height=W*dpr;
+  canvas.style.height=W+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
   CELL=W/(N+1);
   PAD=CELL;
   R=CELL*0.38;
 }
 
 function init(){
+  gen++;
   board=[]; for(var i=0;i<N;i++){var row=[];for(var j=0;j<N;j++)row.push(0);board.push(row);}
   history=[]; current=1; over=false; locked=false;
   hideOverlay();
@@ -193,12 +199,27 @@ function draw(){
     }
     ctx.fillStyle=grad; ctx.fill();
     ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=1; ctx.stroke();
-    // 把棋子画成嘘嘘的脸：脸贴中心，外圈保留原深色(黑)/浅色(白)边——黑白一眼可分
+    /* 把棋子画成嘘嘘的脸。
+       原来脸占 R*0.68，把黑白本体挤得只剩外圈 32%，实测白子对棋盘底色只差 25 个亮度单位，
+       白子容易看丢。这里做两件事：
+       1) 脸缩到 R*0.52，让黑/白渐变重新成为主要面积；
+       2) 两种棋子都补一圈深色外轮廓，保证在米黄棋盘上边缘清晰。
+       照片没加载好就完全走原来的黑白渐变子，不描额外轮廓。 */
     if(window.XUXU){
       var pi=(r*N+c)%XUXU.COUNT;
-      var fr=R*0.68;
-      var ring=board[r][c]===1?'rgba(255,255,255,.9)':'rgba(0,0,0,.5)';
-      XUXU.drawFace(ctx,x,y,fr,pi,{ring:ring,ringWidth:0.1});   // 没加载好就只剩原来的黑白渐变子
+      var fr=R*0.52;
+      var isBlack=board[r][c]===1;
+      var ring=isBlack?'rgba(255,255,255,.95)':'rgba(0,0,0,.5)';
+      if(XUXU.drawFace(ctx,x,y,fr,pi,{ring:ring,ringWidth:0.12})){
+        /* 细描边：只用来把棋子边界从米黄棋盘上勾出来。
+           描边太粗会让白子边缘发暗，反而把黑白差距从 153 压到 85，所以用细的。
+           实测：脸 0.68→0.52 使黑白本体亮度差 66→203，白子本体对棋盘 4→47。 */
+        var rw=Math.max(1,R*0.1);
+        ctx.beginPath(); ctx.arc(x,y,R-rw/2,0,Math.PI*2);
+        ctx.lineWidth=rw;
+        ctx.strokeStyle=isBlack?'rgba(0,0,0,.8)':'rgba(0,0,0,.45)';
+        ctx.stroke();
+      }
     }
   }
   // last move marker
@@ -239,7 +260,9 @@ function onClick(e){
   if(place(r,c)){
     if(!over){
       locked=true;
-      setTimeout(aiMove,400);
+      var g=gen;
+      /* AI 400ms 后才落子；这期间若点了新开局/悔棋，迟到的白子会落进新棋盘 */
+      setTimeout(function(){ if(g===gen) aiMove(); },400);
     }
   }
 }
@@ -373,9 +396,9 @@ canvas.addEventListener('touchstart',onClick,{passive:false});
 
 document.getElementById('btnNew').onclick=init;
 document.getElementById('btnUndo').onclick=undo;
-document.getElementById('btnBack').onclick=function(){location.href='../../';};
+document.getElementById('btnBack').onclick=function(){location.href='../../index.html';};
 document.getElementById('ovBtn1').onclick=init;
-document.getElementById('ovBtn2').onclick=function(){location.href='../../';};
+document.getElementById('ovBtn2').onclick=function(){location.href='../../index.html';};
 
 resize(); init();
 // 静态重画型游戏：照片加载好一张就主动重画一次，否则脸永远不出现

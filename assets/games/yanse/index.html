@@ -81,7 +81,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>颜色大挑战</span></h1>
     <div class="avatar" id="avatar" title="嘘嘘"></div>
   </header>
@@ -120,6 +120,7 @@ showFace(avatar,0);
 showFace(ovFace,1);
 
 var score=0, playing=false, timeLeft=15, timer=null;
+var gen=0; // 局数代记号：结束弹窗延迟 500ms，期间点了重开就不要再弹旧窗
 var best=+(localStorage.getItem('xuxu_color_best')||0);
 bestEl.textContent=best;
 
@@ -164,6 +165,7 @@ function round(){
 }
 
 function start(){
+  gen++;
   score=0; timeLeft=15; playing=true;
   scoreEl.textContent=0; timeEl.textContent=15;
   showFace(avatar,0);
@@ -181,7 +183,9 @@ function end(){
   playing=false;
   clearInterval(timer);
   var isNew=score>0&&score>=best;
+  var g=gen;
   setTimeout(function(){
+    if(g!==gen)return;
     overlay.querySelector('h2').textContent=isNew?'新纪录！🎉':'挑战结束';
     overlay.querySelector('p').textContent='得分 '+score+' · 最佳 '+best;
     showFace(ovFace,isNew?8:10);    // 结束画面的嘘嘘头像：破纪录和没破纪录换脸

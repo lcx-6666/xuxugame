@@ -75,7 +75,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>俄罗斯方块</span></h1>
   </header>
   <div class="main">
@@ -188,6 +188,7 @@ function rotate(m){
 }
 
 function tryRotate(){
+  if(paused||over)return;   // 暂停/结束后不许再改棋盘
   var rm=rotate(cur.m);
   for(var dx=0;dx<2;dx++){
     if(!collide(rm,cur.x+dx,cur.y)){cur.m=rm;cur.x+=dx;return;}
@@ -230,6 +231,7 @@ function tick(){
 }
 
 function hardDrop(){
+  if(paused||over)return;   // 暂停时按空格不能再落块
   while(!collide(cur.m,cur.x,cur.y+1))cur.y++;
   merge(); draw();
 }
@@ -277,9 +279,16 @@ function block(context,x,y,color,ki,sz){
   context.fillRect(x+m+3,y+m+3,sz-8,sz*0.16);
   // 脸贴在方块内部，四周保留原色当边框——哪些格子被占依然是唯一判断依据
   if(window.XUXU && ki!=null){
-    var pad=sz*0.2;
+    var pad=sz*0.15;
     var fw=s-pad*2, fh=s-pad*2;
-    if(fw>2 && fh>2 && XUXU.drawFaceRound(context,x+m+pad,y+m+pad,fw,fh,ki,rad)){
+    /* 小于 MIN_FACE 像素就别贴脸了：照片缩到十像素以下会糊成一团色块，
+       反而干扰"哪些格子被占"这个唯一判断依据。
+       fw = 0.7*sz - 2，所以：
+         next 预览 sz=16 → fw≈9   → 跳过，保留纯色块（本来就是糊的）
+         手机 360px 宽 sz≈33 → fw≈21 → 正常贴脸
+         桌面更宽 → fw 更大 → 正常贴脸 */
+    var MIN_FACE=14;
+    if(fw>=MIN_FACE && fh>=MIN_FACE && XUXU.drawFaceRound(context,x+m+pad,y+m+pad,fw,fh,ki,rad)){
       context.save();                              // 再描一圈原色边，方块边界更清晰
       XUXU.roundPath(context,x+m+pad,y+m+pad,fw,fh,Math.max(2,fw*0.25));
       context.lineWidth=Math.max(1,sz*0.06);

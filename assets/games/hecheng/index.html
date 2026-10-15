@@ -133,7 +133,7 @@
 </div>
 
 <footer>
-  点击 / 拖动 / 滑动屏幕操作 · <a href="../../">🏠 返回嘘嘘游戏大厅</a><br>
+  点击 / 拖动 / 滑动屏幕操作 · <a href="../../index.html">🏠 返回嘘嘘游戏大厅</a><br>
   灵感来自 <a href="https://milkyfrog.com/games" target="_blank" rel="noopener">milkyfrog.com</a> 奶蛙游戏宇宙
 </footer>
 
@@ -211,7 +211,12 @@ function resize(){
   var rect=wrap.getBoundingClientRect();
   W=Math.floor(rect.width);
   H=Math.floor(W*1.35);
-  canvas.width=W; canvas.height=H;
+  /* 以前画布没按 dpr 放大，手机（dpr 2~3）上球和脸都是虚的。
+     物理坐标仍用 CSS 像素，只有绘制放大，互不影响 */
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
   SCALE=W/BASE_W;
   LINE_Y=90*SCALE;
 }
@@ -242,7 +247,8 @@ function init(){
   nextLevel=randomStartLevel();
   currentLevel=randomStartLevel();
   mouseX=W/2;
-  requestAnimationFrame(render);
+  /* 渲染循环只在页面底部启动一次。以前每次 init 都新挂一个 rAF 链，
+     旧链因 engine 非空继续跑，每重开一局就多一条循环，越玩越卡 */
 }
 
 function randomStartLevel(){
@@ -449,7 +455,7 @@ canvas.addEventListener('mouseup',onPointerUp);
 canvas.addEventListener('touchend',onPointerUp,{passive:false});
 
 document.getElementById('btnNew').onclick=function(){if(confirm('重新开一局？当前进度会清空'))init();};
-document.getElementById('btnBack').onclick=function(){location.href='../../';};
+document.getElementById('btnBack').onclick=function(){location.href='../../index.html';};
 document.getElementById('ovBtn').onclick=init;
 
 best=parseInt(localStorage.getItem('xuxu_hecheng_best')||'0',10)||0;
@@ -457,7 +463,15 @@ bestEl.textContent=best;
 loadPhotos();
 resize();
 init();
-window.addEventListener('resize',function(){location.reload();});
+if(location.search.indexOf('preview=1')<0) requestAnimationFrame(render); // 唯一的渲染循环入口
+
+/* 手机浏览器上下滑动会显示/收起地址栏，触发 resize（只变高度）。
+   以前任何 resize 都直接 reload，正在玩的局会被刷掉；
+   只有宽度真的变了（横竖屏切换、窗口拖放）才需要重排重开 */
+window.addEventListener('resize',function(){
+  var w=wrap.getBoundingClientRect().width;
+  if(Math.abs(w-W)>2) location.reload();
+});
 
 /* 静态预览模式：URL 带 ?preview=1 时只画一帧，不跑物理引擎，方便截图 */
 if(location.search.indexOf('preview=1')>=0){
