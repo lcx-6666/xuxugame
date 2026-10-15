@@ -209,6 +209,26 @@ var PHOTOS=[
 ];
 /* ============================================================== */
 
+/* 照片预加载：某一张加载失败就让那一级退回 emoji，
+   否则方块背景已被设成 transparent，会变成只剩数字的空块 */
+var PHOTO_OK=[];
+function refreshTiles(){
+  tiles.forEach(function(t){renderTile(t);fontSize(t);});
+}
+PHOTOS.forEach(function(src,i){
+  PHOTO_OK[i]=false;
+  var im=new Image();
+  im.onload=function(){PHOTO_OK[i]=true;refreshTiles();};
+  im.onerror=function(){PHOTO_OK[i]=false;refreshTiles();};
+  im.src=src;
+});
+/* 只把真正加载成功的照片交出去 */
+function photoAt(idx){
+  if(!PHOTOS.length) return null;
+  var i=Math.min(idx,PHOTOS.length-1);
+  return PHOTO_OK[i] ? PHOTOS[i] : null;
+}
+
 var tiles=[];
 var nextId=1;
 var score=0, best=0, won=false, over=false, keepPlaying=false;
@@ -258,8 +278,8 @@ var EMOJIS=['💧','🫧','🌊','💦','🚿','🛁','🧼','🌀','🐳','🦈
 function renderTile(t){
   var lv=lvOf(t.value);
   var idx=lv-1;
-  var photo=PHOTOS.length? PHOTOS[Math.min(idx,PHOTOS.length-1)] : null;
-  var crowned=PHOTOS.length && idx>=PHOTOS.length;
+  var photo=photoAt(idx);
+  var crowned=!!photo && idx>=PHOTOS.length;
   var html='';
   if(photo){
     html+='<div class="face" style="background-image:url(\''+photo+'\')"></div>';
