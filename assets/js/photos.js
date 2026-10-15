@@ -93,16 +93,20 @@ function drawFace(ctx, cx, cy, r, i, opts){
   ctx.drawImage(im, sx, sy, side, side, cx-r, cy-r, r*2, r*2);
   ctx.restore();
 
-  /* 描边：让脸和背景分开 */
+  /* 描边：让脸和背景分开。
+     r 很小时（消消乐消除缩放到尾声）r-lw/2 会变负，ctx.arc 抛 IndexSizeError */
   if(opts.ring !== 'none'){
     var lw = Math.max(1, r * (opts.ringWidth == null ? 0.09 : opts.ringWidth));
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r - lw/2, 0, Math.PI*2);
-    ctx.lineWidth = lw;
-    ctx.strokeStyle = opts.ring || 'rgba(255,255,255,.92)';
-    ctx.stroke();
-    ctx.restore();
+    var rr = r - lw/2;
+    if(rr > 0){
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, rr, 0, Math.PI*2);
+      ctx.lineWidth = lw;
+      ctx.strokeStyle = opts.ring || 'rgba(255,255,255,.92)';
+      ctx.stroke();
+      ctx.restore();
+    }
   }
   return true;
 }

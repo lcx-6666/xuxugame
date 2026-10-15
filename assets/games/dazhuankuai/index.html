@@ -63,7 +63,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>打砖块</span></h1>
   </header>
   <div class="toolbar">
@@ -102,9 +102,17 @@ bestEl.textContent=best;
 
 function resize(){
   dpr=Math.min(window.devicePixelRatio||1,2);
+  var oldW=W;
   W=stage.clientWidth;
   if(!(W>0))return;
   H=Math.round(W*1.1);
+  /* 局中转屏/拖窗口：砖块还按旧像素坐标排，会错位甚至超出墙外。
+     按宽度比缩放砖块位置和尺寸，保住本局进度 */
+  if(oldW>0 && bricks.length && Math.abs(W-oldW)>2){
+    var ratio=W/oldW;
+    bricks.forEach(function(b){ b.x*=ratio; b.w*=ratio; });
+    if(ball){ ball.x*=ratio; }
+  }
   cv.width=W*dpr; cv.height=H*dpr;
   cv.style.height=H+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);

@@ -75,7 +75,7 @@ footer{margin-top:26px;text-align:center;font-size:12px;color:#9dbccb}
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="location.href='../../index.html'" title="返回大厅">←</button>
+    <button class="back" onclick="location.href='../../../index.html'" title="返回大厅">←</button>
     <h1>嘘嘘<span>俄罗斯方块</span></h1>
   </header>
   <div class="main">
@@ -300,6 +300,13 @@ function block(context,x,y,color,ki,sz){
 }
 
 function drawNext(){
+  /* next 预览画布也按 dpr 放大：80x80 属性尺寸在 dpr 2~3 的手机上是虚的 */
+  var nd=Math.min(window.devicePixelRatio||1,2);
+  if(ncv.width!==80*nd){
+    ncv.width=80*nd; ncv.height=80*nd;
+    ncv.style.width='80px'; ncv.style.height='80px'; // 属性放大但显示尺寸不变
+  }
+  nctx.setTransform(nd,0,0,nd,0,0);
   nctx.clearRect(0,0,80,80);
   var m=SHAPES[nxt.k];
   var size=16, ox=(80-m.length*size)/2, oy=(80-m.length*size)/2;
